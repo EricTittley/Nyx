@@ -1,5 +1,5 @@
 # BOXLIB_HOME defines the directory in which we will find all the BoxLib code
-BOXLIB_HOME ?= /project/projectdirs/nyx/src/BoxLib
+BOXLIB_HOME = $(HOME)/Num/Nyx/src/BoxLib
 
 HPGMG_DIR ?= $(HOME)/hpgmg/finite-volume
 

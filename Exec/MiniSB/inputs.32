@@ -1,6 +1,6 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step = 2000
-max_step = 10
+#max_step = 10
 
 nyx.use_const_species = 1
 nyx.h_species         = 0.75
@@ -76,7 +76,8 @@ nyx.do_dm_particles = 1
 #  "AsciiFile"        "Random"	    "Cosmological"
 # >>>>>>>>>>>>>  PARTICLE INIT OPTIONS <<<<<<<<<<<<<<<<
 nyx.particle_init_type = AsciiFile
-nyx.ascii_particle_file = ic_sb_32.ascii
+#nyx.ascii_particle_file = ic_sb_32.ascii
+nyx.ascii_particle_file = particle_file.small
 
 # >>>>>>>>>>>>>  PARTICLE AGGREGATION OPTIONS <<<<<<<<<<<<<<<<
 #  "None"    "Cell"     "Flow"

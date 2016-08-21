@@ -4,6 +4,7 @@ f90EXE_sources += enforce_minimum_density_3d.f90
 f90EXE_sources += flatten_3d.f90
 f90EXE_sources += normalize_species_3d.f90
 f90EXE_sources += Nyx_advection_3d.f90
+#F90EXE_sources += Nyx_advection_3d.F90
 f90EXE_sources += ppm_3d.f90
 f90EXE_sources += slope_3d.f90
 f90EXE_sources += trace_3d.f90

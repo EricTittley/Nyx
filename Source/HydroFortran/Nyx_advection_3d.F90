@@ -1021,12 +1021,13 @@
                ! Convert "e" back to "rho e"
                q(i,j,k,QREINT) = q(i,j,k,QREINT)*q(i,j,k,QRHO)
 
-! Original
-!               ! Pressure = (gamma - 1) * rho * e
-!               q(i,j,k,QPRES) = gamma_minus_1 * q(i,j,k,QREINT)
-! Perfect Fluid
-!	       ! Pressure = SoundSpeed^2 * rho [km/s]^2 Mo/Mpc^3
+              #ifndef EOS_PERFECT_FLUID
+               ! Pressure = (gamma - 1) * rho * e
+               q(i,j,k,QPRES) = gamma_minus_1 * q(i,j,k,QREINT)
+	      #else
+	       ! Pressure = SoundSpeed^2 * rho
 	       q(i,j,k,QPRES) = 100.0 * q(i,j,k,QRHO)
+	      #endif
 
             end do
          end do

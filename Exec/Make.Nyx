@@ -97,6 +97,11 @@ USE_MG = FALSE
 ifeq ($(USE_GRAV), TRUE)
   USE_MG = TRUE
 endif
+
+ifeq ($(USE_EOS_PERFECT_FLUID), TRUE)
+  DEFINES += -DEOS_PERFECT_FLUID
+endif
+
    
 ifeq ($(USE_MG), TRUE)
   include $(BOXLIB_HOME)/Src/LinearSolvers/C_to_F_MG/Make.package

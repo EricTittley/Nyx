@@ -304,7 +304,7 @@ void Nyx::initcosmo()
     }
     else
     {
-       std::cout << "No clue from which code the initial coniditions originate..." << std::endl
+       std::cout << "No clue from which code the initial conditions originate..." << std::endl
 	         << "Aborting...!" << std::endl;
        BoxLib::Abort();
     }

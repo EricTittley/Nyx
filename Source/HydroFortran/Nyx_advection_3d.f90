@@ -1021,8 +1021,12 @@
                ! Convert "e" back to "rho e"
                q(i,j,k,QREINT) = q(i,j,k,QREINT)*q(i,j,k,QRHO)
 
-               ! Pressure = (gamma - 1) * rho * e
-               q(i,j,k,QPRES) = gamma_minus_1 * q(i,j,k,QREINT)
+! Original
+!               ! Pressure = (gamma - 1) * rho * e
+!               q(i,j,k,QPRES) = gamma_minus_1 * q(i,j,k,QREINT)
+! Perfect Fluid
+!	       ! Pressure = SoundSpeed^2 * rho [km/s]^2 Mo/Mpc^3
+	       q(i,j,k,QPRES) = 100.0 * q(i,j,k,QRHO)
 
             end do
          end do
@@ -1054,10 +1058,10 @@
                srcQ(i,j,k,QREINT) = src(i,j,k,UEDEN) - q(i,j,k,QU)*src(i,j,k,UMX) - &
                                                        q(i,j,k,QV)*src(i,j,k,UMY) - &
                                                        q(i,j,k,QW)*src(i,j,k,UMZ) - &
-                                                       a_dot * THREE * gamma_minus_1 * q(i,j,k,QREINT)
+                                                       a_dot * THREE * 100.0 * q(i,j,k,QRHO)
 
-               dpde = gamma_minus_1 * q(i,j,k,QRHO)
-               dpdr = gamma_minus_1 * q(i,j,k,QREINT)/q(i,j,k,QRHO)
+               dpde = 0.0
+               dpdr = 100.0
                srcQ(i,j,k,QPRES ) = dpde * srcQ(i,j,k,QREINT) * rhoInv &
                                   + dpdr * srcQ(i,j,k,QRHO)
 
@@ -1523,6 +1527,8 @@
                   call flush(6)
                endif
                pl(i)  = max(pl(i),small_pres)
+               ! Not sure what to do here. With a perfect fluid, the pressure is not a function of internal 
+	       ! energy. But is the converse true?  The internal energy should just be constant.
                rel(i) = pl(i) / gamma_minus_1
             end if
          end do
@@ -1577,6 +1583,8 @@
                  call flush(6)
                endif
                pr(i) = max(pr(i),small_pres)
+               ! Not sure what to do here. With a perfect fluid, the pressure is not a function of internal 
+	       ! energy. But is the converse true?  The internal energy should just be constant.
                rer(i) = pr(i) / gamma_minus_1
             end if
          end do
@@ -1751,6 +1759,8 @@
          pgdnv(ilo:ihi,j,kc) = max(pgdnv(ilo:ihi,j,kc),small_pres)
 
          ! NOTE: Here we assume constant gamma.
+         ! Not sure what to do here. With a perfect fluid, the pressure is not a function of internal 
+	 ! energy. But is the converse true?  The internal energy should just be constant.
          regdnv        = pgdnv(ilo:ihi,j,kc) / gamma_minus_1
 
          do i = ilo, ihi

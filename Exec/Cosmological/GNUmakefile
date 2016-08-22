@@ -1,5 +1,5 @@
 # BOXLIB_HOME defines the directory in which we will find all the BoxLib code
-BOXLIB_HOME = $(HOME)/Num/Nyx/src/BoxLib
+BOXLIB_HOME = $(PWD)/../../../BoxLib
 
 # TOP defines the directory in which we will find Source, Exec, etc
 TOP = ../..

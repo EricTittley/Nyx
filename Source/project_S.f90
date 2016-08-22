@@ -39,6 +39,8 @@ subroutine project(rho, u, v, w, rhoe, &
 
   ! compute some primitive variables
   ! p = (rhoE - 0.5d0*rho*(u**2 + v**2 + w**2))*g1
+  ! WAS:
+  ! p = g1 * rhoe
   p = 100.0 * rho
 
   c = sqrt(gamma_const*p/rho)

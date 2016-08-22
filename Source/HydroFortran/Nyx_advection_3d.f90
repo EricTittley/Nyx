@@ -1059,7 +1059,11 @@
                                                        q(i,j,k,QV)*src(i,j,k,UMY) - &
                                                        q(i,j,k,QW)*src(i,j,k,UMZ) - &
                                                        a_dot * THREE * 100.0 * q(i,j,k,QRHO)
+               ! PREVIOUS LINE WAS:  a_dot * THREE * gamma_minus_1 * q(i,j,k,QREINT)
 
+               ! WAS:
+	       ! dpde = gamma_minus_1 * q(i,j,k,QRHO)
+	       ! dpdr = gamma_minus_1 * q(i,j,k,QREINT)/q(i,j,k,QRHO)
                dpde = 0.0
                dpdr = 100.0
                srcQ(i,j,k,QPRES ) = dpde * srcQ(i,j,k,QREINT) * rhoInv &

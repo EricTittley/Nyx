@@ -918,6 +918,9 @@
       double precision :: a_half, a_dot, rhoInv
       double precision :: dtdxaold, dtdyaold, dtdzaold, small_pres_over_dens
 
+      ! ADDED BY ERT
+      double precision :: SoundSpeedSquared = 1.0
+
       do i=1,3
          loq(i) = lo(i)-ngp
          hiq(i) = hi(i)+ngp
@@ -1026,7 +1029,7 @@
 !               q(i,j,k,QPRES) = gamma_minus_1 * q(i,j,k,QREINT)
 ! Perfect Fluid
 !	       ! Pressure = SoundSpeed^2 * rho [km/s]^2 Mo/Mpc^3
-	       q(i,j,k,QPRES) = 100.0 * q(i,j,k,QRHO)
+	       q(i,j,k,QPRES) = SoundSpeedSquared * q(i,j,k,QRHO)
 
             end do
          end do
@@ -1058,14 +1061,14 @@
                srcQ(i,j,k,QREINT) = src(i,j,k,UEDEN) - q(i,j,k,QU)*src(i,j,k,UMX) - &
                                                        q(i,j,k,QV)*src(i,j,k,UMY) - &
                                                        q(i,j,k,QW)*src(i,j,k,UMZ) - &
-                                                       a_dot * THREE * 100.0 * q(i,j,k,QRHO)
+                                                       a_dot * THREE * SoundSpeedSquared * q(i,j,k,QRHO)
                ! PREVIOUS LINE WAS:  a_dot * THREE * gamma_minus_1 * q(i,j,k,QREINT)
 
                ! WAS:
 	       ! dpde = gamma_minus_1 * q(i,j,k,QRHO)
 	       ! dpdr = gamma_minus_1 * q(i,j,k,QREINT)/q(i,j,k,QRHO)
                dpde = 0.0
-               dpdr = 100.0
+               dpdr = SoundSpeedSquared
                srcQ(i,j,k,QPRES ) = dpde * srcQ(i,j,k,QREINT) * rhoInv &
                                   + dpdr * srcQ(i,j,k,QRHO)
 

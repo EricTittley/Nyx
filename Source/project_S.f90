@@ -26,6 +26,9 @@ subroutine project(rho, u, v, w, rhoe, &
   double precision :: p, c
   double precision :: Vsq, H, A, g1
 
+  ! ADDED BY ERT
+  double precision :: SoundSpeedSquared = 1.0
+
   integer :: n
   logical :: notrace
 
@@ -41,7 +44,7 @@ subroutine project(rho, u, v, w, rhoe, &
   ! p = (rhoE - 0.5d0*rho*(u**2 + v**2 + w**2))*g1
   ! WAS:
   ! p = g1 * rhoe
-  p = 100.0 * rho
+  p = SoundSpeedSquared * rho
 
   c = sqrt(gamma_const*p/rho)
 

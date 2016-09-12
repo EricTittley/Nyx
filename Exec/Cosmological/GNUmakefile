@@ -7,8 +7,10 @@ TOP = ../..
 # compilation options
 COMP    = gcc
 FCOMP   = gfortran
-USE_OMP = FALSE
-USE_MPI = TRUE
+USE_OMP = TRUE
+#USE_OMP = FALSE
+#USE_MPI = TRUE
+USE_MPI = FALSE
 
 PRECISION = DOUBLE
 DEBUG     = FALSE
@@ -36,4 +38,6 @@ USE_EOS_PERFECT_FLUID = TRUE
 Bpack := ./Make.package
 Blocs := .
 
+MACHINE = Linux
+DISTRIBUTION = Ubuntu
 include $(TOP)/Exec/Make.Nyx

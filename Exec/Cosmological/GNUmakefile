@@ -7,19 +7,19 @@ TOP = ../..
 # compilation options
 COMP    = gcc
 FCOMP   = gfortran
-USE_OMP = FALSE
-USE_MPI = TRUE
+USE_OMP = TRUE
+USE_MPI = FALSE
 
-PRECISION = DOUBLE
-DEBUG     = FALSE
-#DEBUG     = TRUE
+PRECISION = SINGLE
+#DEBUG     = FALSE
+DEBUG     = TRUE
 
 # Use single precision for particles?
 #
 # If you set this to be TRUE be sure to do a "make realclean"
 # to make sure all your code is consistent.
 #
-USE_SINGLE_PRECISION_PARTICLES = FALSE
+USE_SINGLE_PRECISION_PARTICLES = TRUE
 
 # physics
 DIM      = 3

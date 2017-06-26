@@ -1,3 +1,6 @@
+# SEE Make.defs for machine-dependent compilation variables.
+# This can be editted directly from EDIT_Make.defs
+
 # BOXLIB_HOME defines the directory in which we will find all the BoxLib code
 BOXLIB_HOME = $(HOME)/Num/Nyx/src/BoxLib
 
@@ -11,8 +14,8 @@ USE_OMP = TRUE
 USE_MPI = FALSE
 
 PRECISION = SINGLE
-#DEBUG     = FALSE
-DEBUG     = TRUE
+DEBUG     = FALSE
+#DEBUG     = TRUE
 
 # Use single precision for particles?
 #

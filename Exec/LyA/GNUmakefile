@@ -1,21 +1,15 @@
-# BOXLIB_HOME defines the directory in which we will find all the BoxLib code
-BOXLIB_HOME = $(HOME)/Num/Nyx/src/BoxLib
-#BOXLIB_HOME = /home/vince/Development/BLMaster/BoxLib
+# AMREX_HOME defines the directory in which we will find all the BoxLib code
+AMREX_HOME ?= /project/projectdirs/nyx/src/amrex
 
 HPGMG_DIR ?= /global/homes/f/friesen/hpgmg/finite-volume
 
 # TOP defines the directory in which we will find Source, Exec, etc
 TOP = ../..
 
-# Reeber
-BOOST_DIR ?= /opt/local
-REEBER_HOME ?= $(HOME)/devel/Reeber/dev
-
 # compilation options
 COMP    = gcc
-FCOMP   = gfortran
 USE_MPI = TRUE
-USE_OMP = FALSE
+USE_OMP = TRUE
 
 PROFILE       = FALSE
 TRACE_PROFILE = FALSE
@@ -23,6 +17,19 @@ COMM_PROFILE  = FALSE
 
 PRECISION = DOUBLE
 DEBUG     = FALSE
+
+GIMLET = FALSE
+REEBER = FALSE
+
+GIMLET_DIR ?= /home/vince/Development/gimlet
+# Gimlet needs FFTW MPI.
+FFTW_INC ?= /usr/include
+FFTW_DIR ?= /usr/lib/x86_64-linux-gnu
+
+REEBER_HOME ?= /project/projectdirs/nyx/ghweber/reeber2
+# Reeber needs Boost (both headers and libraries) and diy2.
+BOOST_INCLUDE_DIR ?= /project/projectdirs/nyx/ghweber/boost-1.61.0-noarch/include
+DIY_INCLUDE_DIR ?= /project/projectdirs/nyx/ghweber/diy/include
 
 USE_HPGMG = FALSE
 HPGMG_FCYCLES = FALSE
@@ -37,9 +44,6 @@ HPGMG_SMOOTHER = GSRB
 DIM      = 3
 USE_GRAV = TRUE
 USE_HEATCOOL = TRUE
-
-# Analysis
-USE_IN_SITU = FALSE
 
 Bpack := ./Make.package
 Blocs := .

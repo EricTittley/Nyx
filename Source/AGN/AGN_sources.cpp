@@ -1,6 +1,8 @@
 #include <Nyx.H>
 #include <Nyx_F.H>
 
+using namespace amrex;
+
 #ifdef AGN
 void
 Nyx::get_old_source (Real      old_time,
@@ -17,6 +19,9 @@ Nyx::get_old_source (Real      old_time,
     MultiFab& D_old = get_old_data(DiagEOS_Type);
     const int num_comps = S_old.nComp();
 
+    ext_src.setVal(0.);
+
+#if 0
     // Find the current particle locations
     Array<Real> part_locs_and_mass;
     Nyx::theAPC()->GetParticleLocationsAndMass(part_locs_and_mass);
@@ -31,7 +36,7 @@ Nyx::get_old_source (Real      old_time,
          ++Old_fpi)
     {
         const Box& bx = grids[Old_fpi.index()];
-        BL_FORT_PROC_CALL(CA_EXT_SRC, ca_ext_src)
+        ext_src
             (bx.loVect(), bx.hiVect(), 
              BL_TO_FORTRAN(Old_fpi()), BL_TO_FORTRAN(Old_fpi()), 
              BL_TO_FORTRAN(Old_dfpi()), BL_TO_FORTRAN(Old_dfpi()),
@@ -44,11 +49,13 @@ Nyx::get_old_source (Real      old_time,
         if (ext_src[Old_fpi].norm(0,Density,1) != 0)
         {
             std::cout << "The source terms for density are non-zero" << std::endl;
-            BoxLib::Error();
+            amrex::Error();
         }
     }
 
-    geom.FillPeriodicBoundary(ext_src, 0, NUM_STATE);
+    ext_src.EnforcePeriodicity(0, NUM_STATE, geom.periodicity());
+#endif
+
     if (show_timings)
     {
         const int IOProc = ParallelDescriptor::IOProcessorNumber();
@@ -78,6 +85,9 @@ Nyx::get_new_source (Real      old_time,
     MultiFab& D_old = get_old_data(DiagEOS_Type);
     const int num_comps = S_old.nComp();
 
+    ext_src.setVal(0.);
+
+#if 0
     // Find the current particle locations
     Array<Real> part_locs_and_mass;
     Nyx::theAPC()->GetParticleLocationsAndMass(part_locs_and_mass);
@@ -97,7 +107,7 @@ Nyx::get_new_source (Real      old_time,
          ++Old_fpi, ++New_fpi, ++Old_dfpi, ++New_dfpi)
     {
         const Box& bx = grids[Old_fpi.index()];
-        BL_FORT_PROC_CALL(CA_EXT_SRC, ca_ext_src)
+        ext_src
             (bx.loVect(), bx.hiVect(), 
              BL_TO_FORTRAN(Old_fpi()), BL_TO_FORTRAN(New_fpi()), 
              BL_TO_FORTRAN(Old_dfpi()), BL_TO_FORTRAN(New_dfpi()), 
@@ -106,7 +116,9 @@ Nyx::get_new_source (Real      old_time,
              prob_lo, dx, &new_time, &z, &dt);
     }
 
-    geom.FillPeriodicBoundary(ext_src, 0, NUM_STATE);
+    ext_src.EnforcePeriodicity(0, NUM_STATE, geom.periodicity());
+#endif
+
     if (show_timings)
     {
         const int IOProc = ParallelDescriptor::IOProcessorNumber();
@@ -138,7 +150,7 @@ Nyx::time_center_source_terms (MultiFab& S_new,
     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
-        BL_FORT_PROC_CALL(TIME_CENTER_SOURCES, time_center_sources)
+        time_center_sources
             (bx.loVect(), bx.hiVect(), BL_TO_FORTRAN(S_new[mfi]),
              BL_TO_FORTRAN(ext_src_old[mfi]), BL_TO_FORTRAN(ext_src_new[mfi]),
              &a_old, &a_new, &dt, &print_fortran_warnings);
@@ -151,7 +163,7 @@ Nyx::time_center_source_terms (MultiFab& S_new,
         for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
-            BL_FORT_PROC_CALL(ADJUST_HEAT_COOL, adjust_heat_cool)
+            adjust_heat_cool
                 (bx.loVect(), bx.hiVect(), 
                  BL_TO_FORTRAN(S_old[mfi]), BL_TO_FORTRAN(S_new[mfi]),
                  BL_TO_FORTRAN(ext_src_old[mfi]), BL_TO_FORTRAN(ext_src_new[mfi]),

@@ -2,6 +2,8 @@
 #include "Nyx.H"
 #include "Nyx_F.H"
 
+using namespace amrex;
+
 Real Nyx::initial_z             = -1.0;
 Real Nyx::final_a               = -1.0;
 Real Nyx::final_z               = -1.0;
@@ -21,7 +23,7 @@ Nyx::read_comoving_params ()
         if (final_a > 0)
         {
             std::cerr << "ERROR::dont specify both final_a and final_z\n";
-            BoxLib::Error();
+            amrex::Error();
         }
         else
         {
@@ -35,7 +37,7 @@ Nyx::read_comoving_params ()
     if (initial_z < 0)
     {
         std::cerr << "ERROR::Need to specify non-negative initial redshift \n";
-        BoxLib::Error();
+        amrex::Error();
     }
 }
 
@@ -53,7 +55,7 @@ Nyx::comoving_est_time_step (Real& cur_time, Real& estdt)
         // Initial guess -- note that we send in "new_a" because we haven't yet swapped
         // "old_a" and "new_a" -- we can't do that until after we compute dt and then
         // integrate a forward.
-        BL_FORT_PROC_CALL(FORT_ESTDT_COMOVING_A, fort_estdt_comoving_a)
+        fort_estdt_comoving_a
             (&new_a, &new_dummy_a, &dt, &change_allowed, &final_a, &dt_modified);
 
         if (verbose && (dt_modified == 1) && ParallelDescriptor::IOProcessor())
@@ -73,7 +75,7 @@ Nyx::comoving_est_time_step (Real& cur_time, Real& estdt)
         // Initial guess -- note that we send in "new_a" because we haven't yet swapped
         // "old_a" and "new_a" -- we can't do that until after we compute dt and then
         // integrate a forward.
-        BL_FORT_PROC_CALL(FORT_ESTDT_COMOVING_A, fort_estdt_comoving_a)
+        fort_estdt_comoving_a
             (&old_a, &new_dummy_a, &dt, &change_allowed, &final_a, &dt_modified);
 
         if (verbose && (dt_modified == 1) && ParallelDescriptor::IOProcessor())
@@ -132,7 +134,7 @@ Nyx::get_comoving_a (Real time)
             std::cout << "Old / new a_time  " << old_a_time << " " << new_a_time << std::endl;
             std::cout << "Old / new   a     " << old_a      << " " << new_a    << std::endl;
         }
-        BoxLib::Error("get_comoving_a: invalid time");
+        amrex::Error("get_comoving_a: invalid time");
         return 0;
     }
 }
@@ -157,8 +159,7 @@ Nyx::integrate_comoving_a (Real time,Real dt)
 
         // Update a
         old_a      = new_a;
-        BL_FORT_PROC_CALL(FORT_INTEGRATE_COMOVING_A, fort_integrate_comoving_a)
-            (&old_a, &new_a, &dt);
+        fort_integrate_comoving_a(&old_a, &new_a, &dt);
 
         // Update the times
         old_a_time = new_a_time;
@@ -175,7 +176,7 @@ Nyx::integrate_comoving_a (Real time,Real dt)
     else if (std::abs(time-old_a_time) <= 1.e-10 * time) 
     {
         // Leave old_a and old_a_time alone -- we have already swapped them
-        BL_FORT_PROC_CALL(FORT_INTEGRATE_COMOVING_A, fort_integrate_comoving_a)
+        fort_integrate_comoving_a(&old_a, &new_a, &dt);
             (&old_a, &new_a, &dt);
 
         // Update the new time only
@@ -195,7 +196,7 @@ Nyx::integrate_comoving_a (Real time,Real dt)
             std::cout << "Old / new A time                    " << old_a_time << " " << new_a_time << std::endl;
             std::cout << "Old / new A                         " << old_a      << " " << new_a      << std::endl;
             std::cerr << "ERROR::dont know what to do in integrate_comoving_a" << std::endl;
-            BoxLib::Error();
+            amrex::Error();
     }
 }
 
@@ -211,7 +212,7 @@ Nyx::comoving_a_post_restart (const std::string& restart_file)
         std::ifstream File;
         File.open(FileName.c_str(),std::ios::in);
         if (!File.good())
-            BoxLib::FileOpenFailed(FileName);
+            amrex::FileOpenFailed(FileName);
         File >> old_a;
     }
     ParallelDescriptor::Bcast(&old_a, 1, ParallelDescriptor::IOProcessorNumber());
@@ -231,7 +232,7 @@ Nyx::comoving_a_post_restart (const std::string& restart_file)
 
      // Initialize "this_z" in the atomic_rates_module
      if (heat_cool_type == 1 || heat_cool_type == 3)
-         BL_FORT_PROC_CALL(INIT_THIS_Z, init_this_z)(&old_a);
+         fort_init_this_z(&old_a);
 }
 
 void
@@ -276,8 +277,8 @@ Nyx::plot_z_est_time_step (Real& dt_0, bool& dt_changed)
     // we must figure out what value of dt < dt_0 makes us exactly reach z_value
     if (found_one)
     {
-        BL_FORT_PROC_CALL(FORT_INTEGRATE_COMOVING_A_TO_Z, fort_integrate_comoving_a_to_z)
-                (&old_a, &z_value, &dt);
+        fort_integrate_comoving_a_to_z(&old_a, &z_value, &dt);
+                
 
         if (verbose && ParallelDescriptor::IOProcessor())
         {
@@ -301,8 +302,7 @@ Nyx::plot_z_est_time_step (Real& dt_0, bool& dt_changed)
     // This is where we would be if we advance by twice the current dt_0
     Real two_dt = 2.0*dt_0;
 
-    BL_FORT_PROC_CALL(FORT_INTEGRATE_COMOVING_A, fort_integrate_comoving_a)
-       (&a_old, &a_new, &two_dt);
+    fort_integrate_comoving_a(&a_old, &a_new, &two_dt);
 
     z_new = (1. / a_new) - 1.;
 
@@ -324,14 +324,120 @@ Nyx::plot_z_est_time_step (Real& dt_0, bool& dt_changed)
     if (found_one)
     {
         Real two_dt = 2.0*dt_0;
-        BL_FORT_PROC_CALL(FORT_INTEGRATE_COMOVING_A_TO_Z, fort_integrate_comoving_a_to_z)
-                (&old_a, &z_value, &two_dt);
+        fort_integrate_comoving_a_to_z(&old_a, &z_value, &two_dt);
+                
 
         if (verbose && ParallelDescriptor::IOProcessor())
         {
             std::cout << " " << std::endl;
             std::cout << " ... modifying time step from " << dt_0 << " to " << 0.5 * two_dt << std::endl;
             std::cout << " ... in order to write a plotfile at z = " << z_value 
+                      << " two steps from now " << std::endl;
+            std::cout << " " << std::endl;
+        }
+
+        // We want to pass this value back out
+        dt_0 = 0.5 * two_dt;
+        dt_changed = true;
+    }
+
+    }
+}
+
+void
+Nyx::analysis_z_est_time_step (Real& dt_0, bool& dt_changed)
+{
+    Real dt = dt_0;
+    Real a_old, z_old, a_new, z_new;
+
+    // This is where we are now
+#ifdef NO_HYDRO
+    Real cur_time = state[PhiGrav_Type].curTime();
+#else
+    Real cur_time = state[State_Type].curTime();
+#endif
+    a_old = get_comoving_a(cur_time);
+    z_old = (1. / a_old) - 1.;
+
+    // *****************************************************
+    // First test whether we are within dt of a analysis_z value
+    // *****************************************************
+
+    // This is where we would be if we use the current dt_0
+    Real new_time = cur_time + dt_0;
+    integrate_comoving_a (cur_time,dt_0);
+    a_new = get_comoving_a(new_time);
+    z_new = (1. / a_new) - 1.;
+
+    // Find the relevant entry of the analysis_z_values array
+    Real z_value;
+    bool found_one = false;
+    for (int i = 0; i < analysis_z_values.size(); i++)
+    {
+        // We have gone from before to after one of the specified values
+        if ( (z_new - analysis_z_values[i]) * (z_old - analysis_z_values[i]) < 0 && !found_one)
+        {
+            z_value   = analysis_z_values[i];
+            found_one = true;
+        }
+    }
+
+    // Now that we know that dt_0 is too big and makes us pass z_value,
+    // we must figure out what value of dt < dt_0 makes us exactly reach z_value
+    if (found_one)
+    {
+        fort_integrate_comoving_a_to_z(&old_a, &z_value, &dt);
+
+        if (verbose && ParallelDescriptor::IOProcessor())
+        {
+            std::cout << " " << std::endl;
+            std::cout << " ... modifying time step from " << dt_0 << " to " << dt << std::endl;
+            std::cout << " ... in order to do analysis at z = " << z_value << std::endl;
+            std::cout << " " << std::endl;
+        }
+
+        // We want to pass this value back out
+        dt_0 = dt;
+        dt_changed = true;
+    } 
+    else 
+    { 
+
+    // *****************************************************
+    // If not within one dt, now test whether we are within 2*dt of a analysis_z value
+    // *****************************************************
+
+    // This is where we would be if we advance by twice the current dt_0
+    Real two_dt = 2.0*dt_0;
+
+    fort_integrate_comoving_a(&a_old, &a_new, &two_dt); 
+    z_new = (1. / a_new) - 1.;
+
+    // Find the relevant entry of the analysis_z_values array
+    Real z_value;
+    bool found_one = false;
+    for (int i = 0; i < analysis_z_values.size(); i++)
+    {
+        // We have gone from before to after one of the specified values
+        if ( (z_new - analysis_z_values[i]) * (z_old - analysis_z_values[i]) < 0 && !found_one)
+        {
+            z_value   = analysis_z_values[i];
+            found_one = true;
+        }
+    }
+
+    // Now that we know that 2*dt_0 will make us pass z_value, we set the current dt
+    // as half the interval to reach that z_value
+    if (found_one)
+    {
+        Real two_dt = 2.0*dt_0;
+        fort_integrate_comoving_a_to_z(&old_a, &z_value, &two_dt);
+
+        if (verbose && ParallelDescriptor::IOProcessor())
+        {
+            std::cout << " " << std::endl;
+            std::cout << " ... modifying time step from " << dt_0 << " to " << 0.5 * two_dt << std::endl;
+            std::cout << " ... in order to do analysis at z = " << z_value 
                       << " two steps from now " << std::endl;
             std::cout << " " << std::endl;
         }

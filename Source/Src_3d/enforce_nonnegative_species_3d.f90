@@ -1,86 +1,18 @@
-! ::
-! :: ----------------------------------------------------------
-! ::
+module enforce_module
 
-      !===========================================================================
-      ! This version is called assuming no threaded loops, so the threading happens here... 
-      !===========================================================================
-      subroutine fort_enforce_nonnegative_species(uout,uout_l1,uout_l2,uout_l3, &
-                                                  uout_h1,uout_h2,uout_h3,lo,hi, &
-                                                  print_fortran_warnings)
+   use amrex_fort_module, only : rt => amrex_real
 
-        use meth_params_module, only : NVAR
-        use threadbox_module, only : get_lo_hi
-        use bl_constants_module
-  
-        implicit none
+   implicit none
 
-        integer          :: uout_l1, uout_l2, uout_l3, uout_h1, uout_h2, uout_h3
-        double precision :: uout(uout_l1:uout_h1,uout_l2:uout_h2,uout_l3:uout_h3,NVAR)
-        integer          :: print_fortran_warnings
-
-        ! Local variables
-        integer              :: lo(3), hi(3)
-        integer              :: ib,jb,kb
-        integer              :: nb(3), boxsize(3), tlo(3), thi(3), iblock, iblockxy, nblocks, nblocksxy
-        integer, parameter   :: xblksize = 2048, yblksize = 8, zblksize = 8
-        integer, allocatable :: bxlo(:), bxhi(:), bylo(:), byhi(:), bzlo(:), bzhi(:)
-
-        boxsize = hi-lo+1
-        nb(1) = max(boxsize(1)/xblksize, 1)
-        nb(2) = max(boxsize(2)/yblksize, 1)
-        nb(3) = max(boxsize(3)/zblksize, 1)
-
-        allocate(bxlo(0:nb(1)-1))
-        allocate(bxhi(0:nb(1)-1))
-        allocate(bylo(0:nb(2)-1))
-        allocate(byhi(0:nb(2)-1))
-        allocate(bzlo(0:nb(3)-1))
-        allocate(bzhi(0:nb(3)-1))
-
-        call get_lo_hi(boxsize(1), nb(1), bxlo, bxhi)
-        call get_lo_hi(boxsize(2), nb(2), bylo, byhi)
-        call get_lo_hi(boxsize(3), nb(3), bzlo, bzhi)
-
-        nblocksxy = nb(1)*nb(2)
-        nblocks   = nb(1)*nb(2)*nb(3)
-
-        !$omp parallel private(ib,jb,kb,tlo,thi,iblock,iblockxy)
-        !$omp do
-        do iblock = 0, nblocks-1
-
-           kb = iblock / nblocksxy
-           iblockxy = iblock - kb*nblocksxy
-           jb = iblockxy / nb(1)
-           ib = iblockxy - jb*nb(1)
-           
-           tlo(1) = lo(1) + bxlo(ib)
-           thi(1) = lo(1) + bxhi(ib)
-     
-           tlo(2) = lo(2) + bylo(jb)
-           thi(2) = lo(2) + byhi(jb)
-     
-           tlo(3) = lo(3) + bzlo(kb)
-           thi(3) = lo(3) + bzhi(kb)
-     
-           call enforce_nonnegative_species(uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3,tlo,thi,&
-                                            print_fortran_warnings)
-
-        end do
-        !$omp end do
-        !$omp end parallel
-      
-      end subroutine fort_enforce_nonnegative_species
-! ::
-! :: ----------------------------------------------------------
-! ::
+   contains 
 
       !===========================================================================
       ! This version is called from within threaded loops so *no* OMP here ...
       !===========================================================================
       subroutine enforce_nonnegative_species(uout,uout_l1,uout_l2,uout_l3, &
                                              uout_h1,uout_h2,uout_h3, &
-                                             lo,hi,print_fortran_warnings)
+                                             lo,hi,print_fortran_warnings) &
+      bind(C, name="fort_enforce_nonnegative_species")
 
       use network, only : nspec
       use meth_params_module, only : NVAR, URHO, UFS
@@ -90,15 +22,15 @@
       integer          :: lo(3), hi(3)
       integer          :: uout_l1, uout_l2, uout_l3, uout_h1, uout_h2, uout_h3
       integer          :: print_fortran_warnings
-      double precision :: uout(uout_l1:uout_h1,uout_l2:uout_h2,uout_l3:uout_h3,NVAR)
+      real(rt) :: uout(uout_l1:uout_h1,uout_l2:uout_h2,uout_l3:uout_h3,NVAR)
 
       ! Local variables
       integer          :: i,j,k,n
       integer          :: int_dom_spec
       logical          :: any_negative
-      double precision :: dom_spec,x
+      real(rt) :: dom_spec,x
 
-      double precision, parameter :: eps = -1.0d-16
+      real(rt), parameter :: eps = -1.0d-16
 
       if (UFS .gt. 0) then
 
@@ -188,3 +120,5 @@
       end if ! UFS > 0
 
       end subroutine enforce_nonnegative_species
+
+end module enforce_module

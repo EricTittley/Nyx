@@ -1,8 +1,8 @@
-#include <winstd.H>
 
 #include "Nyx.H"
 #include "Nyx_error_F.H"
 
+using namespace amrex;
 using std::string;
 
 void
@@ -54,3 +54,10 @@ Nyx::error_setup()
                  BL_FORT_PROC_CALL(TAG_OVERDENSITY, tag_overdensity));
 
 }
+
+void
+Nyx::manual_tags_placement (TagBoxArray&    tags,
+                            const Array<IntVect>& bf_lev)
+{
+}
+

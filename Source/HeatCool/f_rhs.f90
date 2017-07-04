@@ -1,10 +1,11 @@
 
 subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
 
+      use amrex_fort_module, only : rt => amrex_real
       use fundamental_constants_module, only: e_to_cgs, density_to_cgs, & 
                                               heat_from_cgs
       use eos_module, only: iterate_ne
-      use atomic_rates_module, ONLY: TCOOLMIN, TCOOLMAX, NCOOLTAB, & 
+      use atomic_rates_module, ONLY: TCOOLMIN, TCOOLMAX, NCOOLTAB, deltaT, &
                                      MPROTON, XHYDROGEN, &
                                      AlphaHp, AlphaHep, AlphaHepp, Alphad, &
                                      GammaeH0, GammaeHe0, GammaeHep, &
@@ -15,19 +16,19 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
       use vode_aux_module       , only: z_vode, rho_vode, T_vode, ne_vode, i_vode, j_vode, k_vode
 
       integer, intent(in)             :: num_eq, ipar
-      double precision, intent(inout) :: e_in(num_eq)
-      double precision, intent(in   ) :: time
-      double precision, intent(in   ) :: rpar
-      double precision, intent(  out) :: energy
+      real(rt), intent(inout) :: e_in(num_eq)
+      real(rt), intent(in   ) :: time
+      real(rt), intent(in   ) :: rpar
+      real(rt), intent(  out) :: energy
 
-      double precision, parameter :: compt_c = 1.01765467d-37, T_cmb = 2.725d0
+      real(rt), parameter :: compt_c = 1.01765467d-37, T_cmb = 2.725d0
 
-      double precision :: logT, deltaT, tmp, fhi, flo
-      double precision :: ahp, ahep, ahepp, ad, geh0, gehe0, gehep
-      double precision :: bh0, bhe0, bhep, bff1, bff4, rhp, rhep, rhepp
-      double precision :: lambda_c, lambda_ff, lambda, heat
-      double precision :: rho, U, a
-      double precision :: nh, nh0, nhp, nhe0, nhep, nhepp
+      real(rt) :: logT, tmp, fhi, flo
+      real(rt) :: ahp, ahep, ahepp, ad, geh0, gehe0, gehep
+      real(rt) :: bh0, bhe0, bhep, bff1, bff4, rhp, rhep, rhepp
+      real(rt) :: lambda_c, lambda_ff, lambda, heat
+      real(rt) :: rho, U, a
+      real(rt) :: nh, nh0, nhp, nhe0, nhep, nhepp
       integer :: j
 
       if (e_in(1) .lt. 0.d0) &
@@ -70,7 +71,6 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
       endif
 
       ! Temperature floor
-      deltaT = (TCOOLMAX - TCOOLMIN)/NCOOLTAB;
       if (logT .le. TCOOLMIN) logT = TCOOLMIN + 0.5d0*deltaT
 
       ! Interpolate rates
@@ -119,11 +119,12 @@ end subroutine f_rhs
 
 subroutine jac(neq, t, y, ml, mu, pd, nrpd, rpar, ipar)
 
+  use amrex_fort_module, only : rt => amrex_real
   implicit none
 
   integer         , intent(in   ) :: neq, ml, mu, nrpd, ipar
-  double precision, intent(in   ) :: y(neq), rpar, t
-  double precision, intent(  out) :: pd(neq,neq)
+  real(rt), intent(in   ) :: y(neq), rpar, t
+  real(rt), intent(  out) :: pd(neq,neq)
 
   ! Should never get here, we are using a numerical Jacobian
   print *,'IN JAC ROUTINE'

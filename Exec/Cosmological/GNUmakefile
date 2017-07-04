@@ -14,8 +14,8 @@ USE_OMP = TRUE
 USE_MPI = FALSE
 
 PRECISION = SINGLE
-DEBUG     = FALSE
-#DEBUG     = TRUE
+#DEBUG     = FALSE
+DEBUG     = TRUE
 
 # Use single precision for particles?
 #

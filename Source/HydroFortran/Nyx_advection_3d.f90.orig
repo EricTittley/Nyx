@@ -923,7 +923,7 @@
       real(rt) :: dtdxaold, dtdyaold, dtdzaold, small_pres_over_dens
 
       ! ADDED BY ERT
-      real(rt) :: SoundSpeedSquared = 1.0
+      double precision :: SoundSpeedSquared = 1.0
 
       do i=1,3
          loq(i) = lo(i)-ngp
@@ -1182,7 +1182,6 @@
       use bl_constants_module
       use meth_params_module, only : difmag, NVAR, URHO, UMX, UMZ, &
            UEDEN, UEINT, UFS, normalize_species, gamma_minus_1
-      use mempool_module, only : bl_allocate, bl_deallocate
 
       implicit none
 
@@ -1211,34 +1210,16 @@
       real(rt) :: a_half_inv, a_new_inv, dt_a_new
       integer          :: i, j, k, n
 
-      !Viscosity stuff
-
-      real(rt), pointer :: sigma(:,:,:,:,:)
-      real(rt) :: eta, zeta
-      integer  :: l, m
-
-      call bl_allocate( sigma,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3),1,3,1,3 )
-		
       a_half  = HALF * (a_old + a_new)
       a_oldsq = a_old * a_old
       a_newsq = a_new * a_new
       vol     = dx * dy * dz
       volinv  = ONE / vol
-      a_new_inv   = ONE / a_new
-      a_newsq_inv = ONE / a_newsq
 
       area1   =      dy * dz
       area2   = dx      * dz
       area3   = dx * dy
 
-      !Eta is shear viscosity and Zeta is bulk viscosity
-      eta      = 0.0
-      zeta  = 1d-5
-
-      sigma = 0.0
-      call viscosity_tensor(lo,hi,sigma,eta,zeta,uin,dx,dy,dz,&
-                            uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3,div)
-	
       do n = 1, NVAR
 
             do k = lo(3),hi(3)
@@ -1272,32 +1253,7 @@
                enddo
             enddo
 
-			
-            !Viscosity update
-            do k = lo(3),hi(3)
-               do j = lo(2),hi(2)
-                  do i = lo(1),hi(1)
-                     if (n .eq. 2) then !Momentum on x 
-                       flux1(i,j,k,n) = flux1(i,j,k,n) - sigma(i,j,k,1,1) / (a_new*dx)
-                       flux2(i,j,k,n) = flux2(i,j,k,n) - sigma(i,j,k,2,1) / (a_new*dx)
-                       flux3(i,j,k,n) = flux3(i,j,k,n) - sigma(i,j,k,3,1) / (a_new*dx)
-                     endif
-                     if (n .eq. 3) then !Momentum on y 
-                       flux1(i,j,k,n) = flux1(i,j,k,n) - sigma(i,j,k,1,2) / (a_new*dy)
-                       flux2(i,j,k,n) = flux2(i,j,k,n) - sigma(i,j,k,2,2) / (a_new*dy)
-                       flux3(i,j,k,n) = flux3(i,j,k,n) - sigma(i,j,k,3,2) / (a_new*dy)
-                     endif 
-                     if (n .eq. 4) then !Momentum on z 
-                       flux1(i,j,k,n) = flux1(i,j,k,n) - sigma(i,j,k,1,3) / (a_new*dz)
-                       flux2(i,j,k,n) = flux2(i,j,k,n) - sigma(i,j,k,2,3) / (a_new*dz)
-                       flux3(i,j,k,n) = flux3(i,j,k,n) - sigma(i,j,k,3,3) / (a_new*dz)
-                     endif
-                  enddo
-               enddo
-            enddo
-
       enddo
-      call bl_deallocate(sigma) 
 
       if (UFS .gt. 0 .and. normalize_species .eq. 1) &
          call normalize_species_fluxes( &
@@ -1307,7 +1263,9 @@
                   lo,hi)
 
       a_half_inv  = ONE / a_half
+      a_new_inv   = ONE / a_new
       dt_a_new    = dt / a_new
+      a_newsq_inv = ONE / a_newsq
 
       do n = 1, NVAR
 
@@ -1936,130 +1894,3 @@
 
       end subroutine divu
 
-      subroutine viscosity_tensor(lo,hi,sigma,eta,zeta,q_in,dx,dy,dz, & 
-                                  q_l1,q_l2,q_l3,q_h1,q_h2,q_h3,div)
-                
-        !implicit none
-
-        use amrex_fort_module, only : rt => amrex_real
-        use bl_constants_module
-        use meth_params_module, only : qu,qv,qw,difmag
-        use mempool_module, only : bl_allocate, bl_deallocate
-        
-        integer          :: q_l1,q_h1,q_l2,q_h2,q_l3,q_h3
-        integer          :: lo(3), hi(3)                
-        real(rt) :: sigma(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:3,1:3)
-        !real(rt) :: a_new,a_newinv 
-        integer          :: i,j,k,l,m
-        real(rt), pointer :: duxdx(:,:,:)
-        real(rt), pointer :: duydx(:,:,:)
-        real(rt), pointer :: duzdx(:,:,:)
-        real(rt), pointer :: duxdy(:,:,:)
-        real(rt), pointer :: duydy(:,:,:)
-        real(rt), pointer :: duzdy(:,:,:)
-        real(rt), pointer :: duxdz(:,:,:)
-        real(rt), pointer :: duydz(:,:,:)
-        real(rt), pointer :: duzdz(:,:,:)
- 
-        real(rt) :: div(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
-        real(rt) :: div1 
-        real(rt) :: q_in(q_l1:q_h1,q_l2:q_h2,q_l3:q_h3,2:4)
-        real(rt) :: eta, zeta
-        real(rt) :: dx,dy,dz    
-        real(rt) :: dxinv,dyinv,dzinv
-        !integer                 :: check 
-        !a_newinv = ONE/a_new
-        call bl_allocate( duxdx,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-        call bl_allocate( duydx,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-        call bl_allocate( duzdx,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-                
-
-        call bl_allocate( duxdy,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-        call bl_allocate( duydy,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-        call bl_allocate( duzdy,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-
-        call bl_allocate( duxdz,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-        call bl_allocate( duydz,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-        call bl_allocate( duzdz,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3))
-                
-        !Write(*,*) lo(1),hi(1),lo(2),hi(2),lo(3),hi(3)
-        dxinv = ONE / dx
-        dyinv = ONE / dy
-        dzinv = ONE / dz
-        !check = 0
-        !Write(*,*) hi(2)
-        do k = lo(3),hi(3)
-          do j = lo(2),hi(2)
-            do i = lo(1),hi(1)
-              !Derivative on x        
-              duxdx(i,j,k)  = (q_in(i,j,k,qu) - q_in(i-1,j  ,k  ,qu))*dxinv 
-              duydx(i,j,k)  = (q_in(i,j,k,qv) - q_in(i-1,j  ,k  ,qv))*dxinv 
-              duzdx(i,j,k)  = (q_in(i,j,k,qw) - q_in(i-1,j  ,k  ,qw))*dxinv 
-
-              !Derivative on y 
-              duxdy(i,j,k)  = (q_in(i,j,k,qu) - q_in(i  ,j-1,k  ,qu))*dyinv 
-              duydy(i,j,k)  = (q_in(i,j,k,qv) - q_in(i  ,j-1,k  ,qv))*dyinv 
-              duzdy(i,j,k)  = (q_in(i,j,k,qw) - q_in(i  ,j-1,k  ,qw))*dyinv  
-              
-              !Derivative on z
-              duxdz(i,j,k)  = (q_in(i,j,k,qu) - q_in(i  ,j  ,k-1,qu))*dzinv 
-              duydz(i,j,k)  = (q_in(i,j,k,qv) - q_in(i  ,j  ,k-1,qv))*dzinv 
-              duzdz(i,j,k)  = (q_in(i,j,k,qw) - q_in(i  ,j  ,k-1,qw))*dzinv 
-
-              div1 = FOURTH*(div(i,j,k) + div(i,j+1,k) + div(i,j,k+1) + div(i,j+1,k+1))
-              div1 = difmag*min(ZERO,div1)
-
-              !!This may be useless 
-              !!divq = div(lo,hi,q_in,q_l1,q_l2,q_l3,q_h1,q_h2,q_h3,dx,dy,dz,&
-              !!		 div,div_l1,div_l2,div_l3,div_h1,div_h2,div_h3)
-
-              !!Divergence terms are already computed, so i am using it
-
-              !! Compute diagonals terms
-              sigma(i,j,k,1,1) = TWO * eta * duxdx(i,j,k) + div1 *(zeta + FOUR3RD *eta)
-              sigma(i,j,k,2,2) = TWO * eta * duydy(i,j,k) + div1 *(zeta + FOUR3RD *eta)
-              sigma(i,j,k,3,3) = TWO * eta * duzdz(i,j,k) + div1 *(zeta + FOUR3RD *eta)
-
-              !! Compute "sub-diagonal" term
-              sigma(i,j,k,2,1) = eta * ( duydx(i,j,k)  + duxdy(i,j,k)  )
-              sigma(i,j,k,3,1) = eta * ( duzdx(i,j,k)  + duxdz(i,j,k)  )
-              sigma(i,j,k,3,2) = eta * ( duzdy(i,j,k)  + duydz(i,j,k)  )
-              
-
-              !! Complete array thanks to symmetry
-              sigma(i,j,k,1,2) = sigma(i,j,k,2,1)
-              sigma(i,j,k,1,3) = sigma(i,j,k,3,1)
-              sigma(i,j,k,2,3) = sigma(i,j,k,3,2)
-        
-              !if (sigma(i,j,k,2,2) .ne. 0 .or. check .ne. 10) then
-              !       Write(*,*) sigma(i,j,k,:,:)     
-              !       check = check +1
-              !endif
-            enddo
-          enddo
-        enddo
-
-        !k=2
-        !j=100
-        !i = 10
-        !
-        !sigma(i,j,k,1,1) = 2!div1 *(zeta + FOUR3RD *eta)
-        !sigma(i,j,k,2,2) = 2!div1 *(zeta + FOUR3RD *eta)
-        !sigma(i,j,k,3,3) = 2!
-        !Write(*,*) sigma(i,j,k,1,1), &
-        !	    sigma(i,j,k,2,2), &
-        !	    sigma(i,j,k,3,3), &
-        !	    div1
-          
-        call bl_deallocate(duxdx)                       
-        call bl_deallocate(duydx)                       
-        call bl_deallocate(duzdx)       
-        
-        call bl_deallocate(duxdy)                       
-        call bl_deallocate(duydy)                       
-        call bl_deallocate(duzdy)                       
-
-        call bl_deallocate(duxdz)                       
-        call bl_deallocate(duydz)                       
-        call bl_deallocate(duzdz)                       
-      end subroutine viscosity_tensor

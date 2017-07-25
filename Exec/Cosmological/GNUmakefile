@@ -17,16 +17,16 @@ USE_MPI = FALSE
 # I can't get it to compile. Requires -std=c++11 which breaks things if GCC < 6
 #USE_MPI3 = TRUE
 
-PRECISION = SINGLE
-#DEBUG     = FALSE
-DEBUG     = TRUE
+PRECISION = DOUBLE
+DEBUG     = FALSE
+#DEBUG     = TRUE
 
 # Use single precision for particles?
 #
 # If you set this to be TRUE be sure to do a "make realclean"
 # to make sure all your code is consistent.
 #
-USE_SINGLE_PRECISION_PARTICLES = TRUE
+USE_SINGLE_PRECISION_PARTICLES = FALSE
 
 # physics
 DIM      = 3

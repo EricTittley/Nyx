@@ -1,7 +1,7 @@
 # SEE Make.defs for machine-dependent compilation variables.
 # This can be editted directly from EDIT_Make.defs
 
-# BOXLIB_HOME defines the directory in which we will find all the BoxLib code
+# AMREX_HOME defines the directory in which we will find all the AMRex code
 AMREX_HOME = $(PWD)/../../../amrex
 
 # TOP defines the directory in which we will find Source, Exec, etc

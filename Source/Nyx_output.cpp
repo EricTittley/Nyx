@@ -1,8 +1,12 @@
 #include <unistd.h>
+#include <iomanip>
 #include <Nyx.H>
 #include <Nyx_F.H>
+#include "Nyx_output.H"
 
-#include "buildInfo.H"
+#include "AMReX_buildInfo.H"
+
+using namespace amrex;
 
 namespace
 {
@@ -45,7 +49,7 @@ Nyx::setPlotVariables ()
             //
             // Get the number of species from the network model.
             //
-            BL_FORT_PROC_CALL(GET_NUM_SPEC, get_num_spec)(&NumSpec);
+            fort_get_num_spec(&NumSpec);
             //
             // Get the species names from the network model.
             //
@@ -56,8 +60,7 @@ Nyx::setPlotVariables ()
                 //
                 // This call return the actual length of each string in "len"
                 //
-                BL_FORT_PROC_CALL(GET_SPEC_NAMES, get_spec_names)
-                    (int_spec_names.dataPtr(), &i, &len);
+                fort_get_spec_names(int_spec_names.dataPtr(), &i, &len);
                 char* spec_name = new char[len+1];
 
                 for (int j = 0; j < len; j++)
@@ -163,7 +166,7 @@ Nyx::writePlotFile (const std::string& dir,
         os << thePlotFileType() << '\n';
 
         if (n_data_items == 0)
-            BoxLib::Error("Must specify at least one valid data item to plot");
+            amrex::Error("Must specify at least one valid data item to plot");
 
         os << n_data_items << '\n';
         //
@@ -224,10 +227,16 @@ Nyx::writePlotFile (const std::string& dir,
 	jobInfoFile << " Nyx Job Information\n";
 	jobInfoFile << PrettyLine;
 
+	jobInfoFile << "inputs file: " << inputs_name << "\n\n";
+
 	jobInfoFile << "number of MPI processes: " << ParallelDescriptor::NProcs() << "\n";
 #ifdef _OPENMP
 	jobInfoFile << "number of threads:       " << omp_get_max_threads() << "\n";
 #endif
+	jobInfoFile << "\n";
+	jobInfoFile << "CPU time used since start of simulation (CPU-hours): " <<
+	  getCPUTime()/3600.0;
+
 	jobInfoFile << "\n\n";
 
         // plotfile information
@@ -254,12 +263,12 @@ Nyx::writePlotFile (const std::string& dir,
 	jobInfoFile << " Cosmology Information\n";
 	jobInfoFile << PrettyLine;
 
-	Real comoving_OmM, comoving_OmL, comoving_h; 
-	BL_FORT_PROC_CALL(GET_OMM, get_omm )(&comoving_OmM );
+	Real comoving_OmM, comoving_OmL, comoving_h;
+	fort_get_omm(&comoving_OmM);
 	// Omega lambda is defined algebraically
 	comoving_OmL = 1. - comoving_OmM;
 
-	BL_FORT_PROC_CALL(GET_HUBBLE, get_hubble)(&comoving_h);
+	fort_get_hubble(&comoving_h);
 
 	jobInfoFile << "Omega_m (comoving):      " << comoving_OmM << "\n";
 	jobInfoFile << "Omega_lambda (comoving): " << comoving_OmL << "\n";
@@ -275,12 +284,12 @@ Nyx::writePlotFile (const std::string& dir,
 	jobInfoFile << "build date:    " << buildInfoGetBuildDate() << "\n";
 	jobInfoFile << "build machine: " << buildInfoGetBuildMachine() << "\n";
 	jobInfoFile << "build dir:     " << buildInfoGetBuildDir() << "\n";
-	jobInfoFile << "BoxLib dir:    " << buildInfoGetBoxlibDir() << "\n";
+	jobInfoFile << "BoxLib dir:    " << buildInfoGetAMReXDir() << "\n";
 
 	jobInfoFile << "\n";
 
-	jobInfoFile << "COMP:  " << buildInfoGetComp() << "\n";
-	jobInfoFile << "FCOMP: " << buildInfoGetFcomp() << "\n";
+	jobInfoFile << "COMP:          " << buildInfoGetComp() << "\n";
+	jobInfoFile << "COMP version:  " << buildInfoGetCompVersion() << "\n";
 
 	jobInfoFile << "\n";
 
@@ -356,7 +365,7 @@ Nyx::writePlotFile (const std::string& dir,
     //
     static const std::string BaseName = "/Cell";
 
-    std::string Level = BoxLib::Concatenate("Level_", level, 1);
+    std::string Level = amrex::Concatenate("Level_", level, 1);
     //
     // Now for the full pathname of that directory.
     //
@@ -368,8 +377,8 @@ Nyx::writePlotFile (const std::string& dir,
     // Only the I/O processor makes the directory if it doesn't already exist.
     //
     if (ParallelDescriptor::IOProcessor())
-        if (!BoxLib::UtilCreateDirectory(FullPath, 0755))
-            BoxLib::CreateDirectoryFailed(FullPath);
+        if (!amrex::UtilCreateDirectory(FullPath, 0755))
+            amrex::CreateDirectoryFailed(FullPath);
     //
     // Force other processors to wait till directory is built.
     //
@@ -405,7 +414,7 @@ Nyx::writePlotFile (const std::string& dir,
     // but a derived variable is allowed to have multiple components.
     int cnt = 0;
     const int nGrow = 0;
-    MultiFab plotMF(grids, n_data_items, nGrow);
+    MultiFab plotMF(grids, dmap, n_data_items, nGrow);
     MultiFab* this_dat = 0;
     //
     // Cull data from state variables -- use no ghost cells.
@@ -426,9 +435,8 @@ Nyx::writePlotFile (const std::string& dir,
         for (std::list<std::string>::iterator it = derive_names.begin();
              it != derive_names.end(); ++it)
         {
-            MultiFab* derive_dat = derive(*it, cur_time, nGrow);
+            const auto& derive_dat = derive(*it, cur_time, nGrow);
             MultiFab::Copy(plotMF, *derive_dat, 0, cnt, 1, nGrow);
-            delete derive_dat;
             cnt++;
         }
     }
@@ -472,7 +480,7 @@ Nyx::particle_plot_file (const std::string& dir)
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
             if (!File.good())
-                BoxLib::FileOpenFailed(FileName);
+                amrex::FileOpenFailed(FileName);
             File.precision(15);
             if (cur_time == 0)
             {
@@ -490,7 +498,7 @@ Nyx::particle_plot_file (const std::string& dir)
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
             if (!File.good())
-                BoxLib::FileOpenFailed(FileName);
+                amrex::FileOpenFailed(FileName);
             File.precision(15);
             File << particle_plotfile_format << '\n';
             File.close();
@@ -518,7 +526,7 @@ Nyx::particle_check_point (const std::string& dir)
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
             if (!File.good())
-                BoxLib::FileOpenFailed(FileName);
+                amrex::FileOpenFailed(FileName);
             File.precision(15);
             if (cur_time == 0)
             {
@@ -541,7 +549,7 @@ Nyx::write_parameter_file (const std::string& dir)
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
             if (!File.good())
-                BoxLib::FileOpenFailed(FileName);
+                amrex::FileOpenFailed(FileName);
             File.precision(15);
             ParmParse::dumpTable(File,true);
             File.close();
@@ -557,8 +565,8 @@ Nyx::writeMultiFabAsPlotFile(const std::string& pltfile,
     std::ofstream os;
     if (ParallelDescriptor::IOProcessor())
     {
-        if (!BoxLib::UtilCreateDirectory(pltfile, 0755))
-                                  BoxLib::CreateDirectoryFailed(pltfile);
+        if (!amrex::UtilCreateDirectory(pltfile, 0755))
+                                  amrex::CreateDirectoryFailed(pltfile);
         std::string HeaderFileName = pltfile + "/Header";
         os.open(HeaderFileName.c_str(), std::ios::out|std::ios::trunc|std::ios::binary);
         // The first thing we write out is the plotfile type.
@@ -608,8 +616,8 @@ Nyx::writeMultiFabAsPlotFile(const std::string& pltfile,
     // Only the I/O processor makes the directory if it doesn't already exist.
     //
     if (ParallelDescriptor::IOProcessor())
-        if (!BoxLib::UtilCreateDirectory(FullPath, 0755))
-            BoxLib::CreateDirectoryFailed(FullPath);
+        if (!amrex::UtilCreateDirectory(FullPath, 0755))
+            amrex::CreateDirectoryFailed(FullPath);
     //
     // Force other processors to wait till directory is built.
     //
@@ -656,6 +664,20 @@ Nyx::checkPoint (const std::string& dir,
                  VisMF::How         how,
                  bool               dump_old_default)
 {
-    AmrLevel::checkPoint(dir, os, how, dump_old);
-    particle_check_point(dir);
+  AmrLevel::checkPoint(dir, os, how, dump_old);
+  particle_check_point(dir);
+
+  if (level == 0 && ParallelDescriptor::IOProcessor())
+    {
+      {
+	// store ellapsed CPU time
+	std::ofstream CPUFile;
+	std::string FullPathCPUFile = dir;
+	FullPathCPUFile += "/CPUtime";
+	CPUFile.open(FullPathCPUFile.c_str(), std::ios::out);
+
+	CPUFile << std::setprecision(15) << getCPUTime();
+	CPUFile.close();
+      }
+    }
 }

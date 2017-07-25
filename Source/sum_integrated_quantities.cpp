@@ -8,6 +8,8 @@
 #include "Gravity.H"
 #endif
 
+using namespace amrex;
+
 #ifndef NO_HYDRO
 void
 Nyx::sum_integrated_quantities ()
@@ -75,7 +77,7 @@ Nyx::sum_integrated_quantities ()
         if (ParallelDescriptor::IOProcessor() && parent->NumDataLogs() >= num_global_data_logs + lev + 1) 
         {
 
-            std::cout << "Writing to data log #" << num_global_data_logs + lev << '\n';
+            std::cout << "Writing level " << lev << " statistics to data log #" << num_global_data_logs + lev << '\n';
             std::ostream& data_log_lev = parent->DataLog(num_global_data_logs + lev);
 
             if (time == 0)
@@ -86,7 +88,7 @@ Nyx::sum_integrated_quantities ()
                 data_log_lev << std::setw(14) << "         Temp ";
                 data_log_lev << std::setw(14) << "     rms_mach ";
                 data_log_lev << std::setw(14) << "      magvort "
-                             << '\n';
+                             << std::endl;
             }
 
             // Write the quantities at this time      
@@ -97,7 +99,7 @@ Nyx::sum_integrated_quantities ()
             data_log_lev << std::setw(14) << std::setprecision(6) << Temp_lev;
             data_log_lev << std::setw(14) << std::setprecision(6) << rms_mach_lev;
             data_log_lev << std::setw(14) << std::setprecision(6) << magvort_lev
-                         << '\n';
+                         << std::endl;
         }
     }
 
@@ -134,21 +136,29 @@ Nyx::sum_integrated_quantities ()
         if (time == 0)
         {
             data_log1 << std::setw(14) << "      time    ";
+            data_log1 << std::setw(14) << "         xmom ";
+            data_log1 << std::setw(14) << "         ymom ";
+            data_log1 << std::setw(14) << "         zmom ";
             data_log1 << std::setw(14) << "        rho_E ";
             data_log1 << std::setw(14) << "        rho_e ";
+            data_log1 << std::setw(14) << "         Temp ";
             data_log1 << std::setw(14) << "     rms_mach " ;
-            data_log1 << std::setw(14) << "      magvort " << '\n';
+            data_log1 << std::setw(14) << "      magvort " << std::endl;
         }
 
         // Write the quantities at this time                                                                                            
         data_log1 << std::setw(14) << time;
+        data_log1 << std::setw(14) << std::setprecision(6) << xmom;
+        data_log1 << std::setw(14) << std::setprecision(6) << ymom;
+        data_log1 << std::setw(14) << std::setprecision(6) << zmom;
         data_log1 << std::setw(14) << std::setprecision(6) << rho_E;
         data_log1 << std::setw(14) << std::setprecision(6) << rho_e;
+        data_log1 << std::setw(14) << std::setprecision(6) << Temp;
         data_log1 << std::setw(14) << std::setprecision(6) << rms_mach;
         data_log1 << std::setw(14) << std::setprecision(6) << magvort
-                  << '\n';
+                  << std::endl;
       }
-      std::cout << '\n';
+      std::cout << std::endl;
     }
 }
 
@@ -179,7 +189,7 @@ Nyx::compute_average_density ()
     // Define the dark matter density on all levels.
     if (Nyx::theDMPC())
     {
-        PArray<MultiFab> particle_mf;
+        Array<std::unique_ptr<MultiFab> > particle_mf;
         Nyx::theDMPC()->AssignDensity(particle_mf);
 
         // Note that we don't need to call the average_down routine because the 
@@ -190,13 +200,13 @@ Nyx::compute_average_density ()
         for (int lev = 0; lev <= finest_level; lev++)
         {
             Nyx& nyx_lev = get_level(lev);
-            average_dm_density += nyx_lev.vol_weight_sum(particle_mf[lev],true);
+            average_dm_density += nyx_lev.vol_weight_sum(*particle_mf[lev],true);
         }
     }
 #ifdef NEUTRINO_PARTICLES
     if (Nyx::theNPC())
     {
-        PArray<MultiFab> particle_mf;
+        Array<std::unique_ptr<MultiFab> > particle_mf;
         Nyx::theNPC()->AssignDensity(particle_mf);
 
         // Note that we don't need to call the average_down routine because the 
@@ -206,7 +216,7 @@ Nyx::compute_average_density ()
         for (int lev = 0; lev <= finest_level; lev++)
         {
             Nyx& nyx_lev = get_level(lev);
-            average_neutr_density += nyx_lev.vol_weight_sum(particle_mf[lev],true);
+            average_neutr_density += nyx_lev.vol_weight_sum(*particle_mf[lev],true);
         }
     }
 #endif
@@ -261,8 +271,9 @@ Nyx::compute_average_temperature (Real& average_temperature)
     // Divide by physical volume of domain.
     average_temperature = average_temperature / geom.ProbSize();
 
-    if (verbose > 0 && ParallelDescriptor::IOProcessor())
+    if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
         std::cout << "Average temperature " << average_temperature << '\n';
+    }
 }
 
 void
@@ -298,13 +309,11 @@ Nyx::compute_average_species (int          nspec,
 
             if (i < nspec)
             {
-               BL_FORT_PROC_CALL(GET_SPEC_NAMES, get_spec_names)
-                   (int_names.dataPtr(), &i, &len);
+               fort_get_spec_names(int_names.dataPtr(), &i, &len);
             }
             else
             {
-               BL_FORT_PROC_CALL(GET_AUX_NAMES, get_aux_names)
-                   (int_names.dataPtr(), &i, &len);
+               fort_get_aux_names(int_names.dataPtr(), &i, &len);
             }
     
             for (int j = 0; j < len; j++)

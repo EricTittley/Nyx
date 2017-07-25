@@ -9,6 +9,8 @@
 
 module eos_module
 
+  use amrex_fort_module, only : rt => amrex_real
+
   implicit none
 
   ! Routines:
@@ -20,16 +22,17 @@ module eos_module
 
       subroutine eos_init_small_pres(R, T, Ne, P, a)
 
+        use amrex_fort_module, only : rt => amrex_real
         use atomic_rates_module, ONLY: YHELIUM
         use fundamental_constants_module, only: mp_over_kb
 
         implicit none
 
-        double precision, intent(  out) :: P
-        double precision, intent(in   ) :: R, T, Ne
-        double precision, intent(in   ) :: a
+        real(rt), intent(  out) :: P
+        real(rt), intent(in   ) :: R, T, Ne
+        real(rt), intent(in   ) :: a
 
-        double precision :: mu
+        real(rt) :: mu
 
         mu = (1.0d0+4.0d0*YHELIUM) / (1.0d0+YHELIUM+Ne)
         P  = R*T / (mp_over_kB * mu)
@@ -44,8 +47,8 @@ module eos_module
 
         implicit none
 
-        double precision, intent(in   ) :: R, e
-        double precision, intent(  out) :: c
+        real(rt), intent(in   ) :: R, e
+        real(rt), intent(  out) :: c
 
         ! sound speed: c^2 = gamma*P/rho
         c = sqrt(gamma_const * gamma_minus_1 *e)
@@ -54,7 +57,7 @@ module eos_module
 
      ! ****************************************************************************
 
-      subroutine nyx_eos_S_given_Re(S, R, T, Ne, a, pt_index)
+      subroutine nyx_eos_S_given_Re(S, R, T, Ne, a)
 
         use bl_constants_module, only: M_PI
         use atomic_rates_module, ONLY: YHELIUM
@@ -62,11 +65,10 @@ module eos_module
         use fundamental_constants_module, only: k_B, hbar, m_proton
         implicit none
 
-        double precision,          intent(  out) :: S
-        double precision,          intent(in   ) :: R, T, Ne, a
-        integer,         optional, intent(in   ) :: pt_index(:)
+        real(rt),          intent(  out) :: S
+        real(rt),          intent(in   ) :: R, T, Ne, a
 
-        double precision :: mu, dens, t1, t2, t3
+        real(rt) :: mu, dens, t1, t2, t3
 
         mu = (1.0d0+4.0d0*YHELIUM) / (1.0d0+YHELIUM+Ne)
         dens = R/(a*a*a)
@@ -83,19 +85,18 @@ module eos_module
 
      ! ****************************************************************************
 
-      subroutine nyx_eos_given_RT(e, P, R, T, Ne, a, pt_index)
+      subroutine nyx_eos_given_RT(e, P, R, T, Ne, a)
 
         use atomic_rates_module, ONLY: YHELIUM
         use fundamental_constants_module, only: mp_over_kb
         use meth_params_module, only: gamma_minus_1
         implicit none
 
-        double precision,          intent(  out) :: e, P
-        double precision,          intent(in   ) :: R, T, Ne
-        double precision,          intent(in   ) :: a
-        integer,         optional, intent(in   ) :: pt_index(:)
+        real(rt),          intent(  out) :: e, P
+        real(rt),          intent(in   ) :: R, T, Ne
+        real(rt),          intent(in   ) :: a
 
-        double precision :: mu
+        real(rt) :: mu
 
         mu = (1.0d0+4.0d0*YHELIUM) / (1.0d0+YHELIUM+Ne)
         e  = T / (gamma_minus_1 * mp_over_kB * mu)
@@ -106,19 +107,18 @@ module eos_module
 
       ! ****************************************************************************
 
-      subroutine nyx_eos_T_given_Re(T, Ne, R_in, e_in, a, pt_index)
+      subroutine nyx_eos_T_given_Re(T, Ne, R_in, e_in, a)
 
       use atomic_rates_module, ONLY: XHYDROGEN, MPROTON
       use fundamental_constants_module, only: density_to_cgs, e_to_cgs
 
       ! In/out variables
-      double precision,           intent(inout) :: T, Ne
-      double precision,           intent(in   ) :: R_in, e_in
-      double precision,           intent(in   ) :: a
-      integer         , optional, intent(in   ) :: pt_index(:)
+      real(rt),           intent(inout) :: T, Ne
+      real(rt),           intent(in   ) :: R_in, e_in
+      real(rt),           intent(in   ) :: a
 
-      double precision :: nh, nh0, nhep, nhp, nhe0, nhepp
-      double precision :: z, rho, U
+      real(rt) :: nh, nh0, nhep, nhp, nhe0, nhepp
+      real(rt) :: z, rho, U
 
       ! This converts from code units to CGS
       rho = R_in * density_to_cgs / a**3
@@ -139,10 +139,10 @@ module eos_module
       use atomic_rates_module, ONLY: XHYDROGEN, MPROTON
 
       ! In/out variables
-      double precision,           intent(in   ) :: z, rho, e
-      double precision,           intent(  out) :: nh0, nhep
+      real(rt),           intent(in   ) :: z, rho, e
+      real(rt),           intent(  out) :: nh0, nhep
 
-      double precision :: nh, nhp, nhe0, nhepp, T, ne
+      real(rt) :: nh, nhp, nhe0, nhepp, T, ne
 
       nh  = rho*XHYDROGEN/MPROTON
       ne  = 1.0d0 ! Guess
@@ -162,15 +162,15 @@ module eos_module
 
       integer :: i
 
-      double precision, intent (in   ) :: z, U, nh
-      double precision, intent (inout) :: ne
-      double precision, intent (  out) :: t, nh0, nhp, nhe0, nhep, nhepp
+      real(rt), intent (in   ) :: z, U, nh
+      real(rt), intent (inout) :: ne
+      real(rt), intent (  out) :: t, nh0, nhp, nhe0, nhep, nhepp
 
-      double precision, parameter :: xacc = 1.0d-6
+      real(rt), parameter :: xacc = 1.0d-6
 
-      double precision :: f, df, eps
-      double precision :: nhp_plus, nhep_plus, nhepp_plus
-      double precision :: dnhp_dne, dnhep_dne, dnhepp_dne, dne
+      real(rt) :: f, df, eps
+      real(rt) :: nhp_plus, nhep_plus, nhepp_plus
+      real(rt) :: dnhp_dne, dnhep_dne, dnhepp_dne, dne
 
       ! Check if we have interpolated to this z
       if (abs(z-this_z) .gt. xacc*z) &
@@ -225,17 +225,17 @@ module eos_module
 
       use meth_params_module, only: gamma_minus_1
       use atomic_rates_module, ONLY: YHELIUM, MPROTON, BOLTZMANN, &
-                                     TCOOLMIN, TCOOLMAX, NCOOLTAB, &
+                                     TCOOLMIN, TCOOLMAX, NCOOLTAB, deltaT, &
                                      AlphaHp, AlphaHep, AlphaHepp, Alphad, &
                                      GammaeH0, GammaeHe0, GammaeHep, &
                                      ggh0, gghe0, gghep
 
-      double precision, intent(in   ) :: U, nh, ne
-      double precision, intent(  out) :: nhp, nhep, nhepp, t
-      double precision :: ahp, ahep, ahepp, ad, geh0, gehe0, gehep
-      double precision :: ggh0ne, gghe0ne, gghepne
-      double precision :: mu, tmp, logT, deltaT, flo, fhi
-      double precision :: smallest_val
+      real(rt), intent(in   ) :: U, nh, ne
+      real(rt), intent(  out) :: nhp, nhep, nhepp, t
+      real(rt) :: ahp, ahep, ahepp, ad, geh0, gehe0, gehep
+      real(rt) :: ggh0ne, gghe0ne, gghepne
+      real(rt) :: mu, tmp, logT, flo, fhi
+      real(rt) :: smallest_val
       integer :: j
 
       mu = (1.0d0+4.0d0*YHELIUM) / (1.0d0+YHELIUM+ne)
@@ -250,7 +250,6 @@ module eos_module
       endif
 
       ! Temperature floor
-      deltaT = (TCOOLMAX - TCOOLMIN)/NCOOLTAB;
       if (logT .le. TCOOLMIN) logT = TCOOLMIN + 0.5d0*deltaT
 
       ! Interpolate rates
@@ -269,9 +268,9 @@ module eos_module
       gehep = flo*GammaeHep(j) + fhi*GammaeHep(j+1)
 
       if (ne .gt. 0.0d0) then
-         ggh0ne   = ggh0 /ne/nh
-         gghe0ne  = gghe0/ne/nh
-         gghepne  = gghep/ne/nh
+         ggh0ne   = ggh0 /(ne*nh)
+         gghe0ne  = gghe0/(ne*nh)
+         gghepne  = gghep/(ne*nh)
       else
          ggh0ne   = 0.0d0
          gghe0ne  = 0.0d0
@@ -282,7 +281,7 @@ module eos_module
       nhp = 1.0d0 - ahp/(ahp + geh0 + ggh0ne)
 
       ! He+
-      smallest_val = 1.d0 / Huge(1.d0)
+      smallest_val = Tiny(1.0d0)
       if ((gehe0 + gghe0ne) .gt. smallest_val) then
 
          nhep  = YHELIUM/(1.0d0 + (ahep  + ad     )/(gehe0 + gghe0ne) &

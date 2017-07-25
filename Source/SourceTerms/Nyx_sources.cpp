@@ -1,6 +1,8 @@
 #include <Nyx.H>
 #include <Nyx_F.H>
 
+using namespace amrex;
+
 #ifndef NO_HYDRO
 
 #ifndef AGN
@@ -17,32 +19,40 @@ Nyx::get_old_source (Real      old_time,
 
     MultiFab& S_old = get_old_data(State_Type);
     MultiFab& D_old = get_old_data(DiagEOS_Type);
-    const int num_comps = S_old.nComp();
 
-    for (FillPatchIterator 
-         Old_fpi (*this, S_old, 4, old_time, State_Type, Density, num_comps),
-         Old_dfpi(*this, D_old, 4, old_time, DiagEOS_Type, 0, 2);
-         Old_fpi.isValid() && Old_dfpi.isValid();
-         ++Old_fpi, ++Old_dfpi)
+    // We need to define these temporary multifabs because S_old and D_old only have one ghost cell.
+    MultiFab Sborder, Dborder;
+
+    Sborder.define(grids, S_old.DistributionMap(), S_old.nComp(), 4);
+    Dborder.define(grids, D_old.DistributionMap(), D_old.nComp(), 4);
+
+    FillPatch(*this, Sborder, 4, old_time, State_Type, Density, Sborder.nComp());
+    FillPatch(*this, Dborder, 4, old_time, DiagEOS_Type, 0, 2);
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(S_old,true); mfi.isValid(); ++mfi)
     {
-        const Box& bx = grids[Old_fpi.index()];
-        BL_FORT_PROC_CALL(CA_EXT_SRC, ca_ext_src)
+        const Box& bx = mfi.tilebox();
+        fort_ext_src
             (bx.loVect(), bx.hiVect(), 
-             BL_TO_FORTRAN(Old_fpi()), BL_TO_FORTRAN(Old_fpi()), 
-             BL_TO_FORTRAN(Old_dfpi()), BL_TO_FORTRAN(Old_dfpi()), 
-             BL_TO_FORTRAN(ext_src[Old_fpi]),
+             BL_TO_FORTRAN(Sborder[mfi]), BL_TO_FORTRAN(Sborder[mfi]),
+             BL_TO_FORTRAN(Dborder[mfi]), BL_TO_FORTRAN(Dborder[mfi]),
+             BL_TO_FORTRAN(ext_src[mfi]),
              prob_lo, dx, &old_time, &z, &dt);
 
         // The formulae in subroutine ctoprim assume that the source term for density is zero
         // Here we abort if it is non-zero.
-        if (ext_src[Old_fpi].norm(0,Density,1) != 0)
+        if (ext_src[mfi].norm(0,Density,1) != 0)
         {
             std::cout << "The source terms for density are non-zero" << std::endl;
-            BoxLib::Error();
+            amrex::Error();
         }
     }
 
-    geom.FillPeriodicBoundary(ext_src, 0, NUM_STATE);
+    ext_src.EnforcePeriodicity(0, NUM_STATE, geom.periodicity());
+
     if (show_timings)
     {
         const int IOProc = ParallelDescriptor::IOProcessorNumber();
@@ -70,25 +80,40 @@ Nyx::get_new_source (Real      old_time,
 
     MultiFab& S_old = get_old_data(State_Type);
     MultiFab& D_old = get_old_data(DiagEOS_Type);
-    const int num_comps = S_old.nComp();
+    MultiFab& S_new = get_old_data(State_Type);
+    MultiFab& D_new = get_old_data(DiagEOS_Type);
 
-    for (FillPatchIterator Old_fpi(*this, S_old, 4, old_time, State_Type, Density, num_comps),
-                           New_fpi(*this, S_old, 4, new_time, State_Type, Density, num_comps),
-                           Old_dfpi(*this, D_old, 4, old_time, DiagEOS_Type, 0, 2),
-                           New_dfpi(*this, D_old, 4, new_time, DiagEOS_Type, 0, 2);
-         Old_fpi.isValid() && New_fpi.isValid() && Old_dfpi.isValid() && New_dfpi.isValid();
-         ++Old_fpi, ++New_fpi, ++Old_dfpi, ++New_dfpi)
+    // We need to define these temporary multifabs because S_old and D_old only have one ghost cell.
+    MultiFab Sborder_old, Dborder_old;
+    MultiFab Sborder_new, Dborder_new;
+
+    Sborder_old.define(grids, S_old.DistributionMap(), S_old.nComp(), 4);
+    Dborder_old.define(grids, D_old.DistributionMap(), D_old.nComp(), 4);
+
+    Sborder_new.define(grids, S_new.DistributionMap(), S_new.nComp(), 4);
+    Dborder_new.define(grids, D_new.DistributionMap(), D_new.nComp(), 4);
+
+    FillPatch(*this, Sborder_old, 4, old_time, State_Type  , Density, Sborder_old.nComp());
+    FillPatch(*this, Sborder_new, 4, new_time, State_Type  , Density, Sborder_new.nComp());
+    FillPatch(*this, Dborder_old, 4, old_time, DiagEOS_Type, 0      , 2);
+    FillPatch(*this, Dborder_new, 4, new_time, DiagEOS_Type, 0      , 2);
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(S_old,true); mfi.isValid(); ++mfi)
     {
-        const Box& bx = grids[Old_fpi.index()];
-        BL_FORT_PROC_CALL(CA_EXT_SRC, ca_ext_src)
+        const Box& bx = mfi.tilebox();
+        fort_ext_src
             (bx.loVect(), bx.hiVect(), 
-             BL_TO_FORTRAN(Old_fpi()), BL_TO_FORTRAN(New_fpi()), 
-             BL_TO_FORTRAN(Old_dfpi()), BL_TO_FORTRAN(New_dfpi()), 
-             BL_TO_FORTRAN(ext_src[Old_fpi]),
+             BL_TO_FORTRAN(Sborder_old[mfi]), BL_TO_FORTRAN(Sborder_new[mfi]),
+             BL_TO_FORTRAN(Dborder_old[mfi]), BL_TO_FORTRAN(Dborder_new[mfi]),
+             BL_TO_FORTRAN(ext_src[mfi]),
              prob_lo, dx, &new_time, &z, &dt);
     }
 
-    geom.FillPeriodicBoundary(ext_src, 0, NUM_STATE);
+    ext_src.EnforcePeriodicity(0, NUM_STATE, geom.periodicity());
+
     if (show_timings)
     {
         const int IOProc = ParallelDescriptor::IOProcessorNumber();
@@ -120,7 +145,7 @@ Nyx::time_center_source_terms (MultiFab& S_new,
     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
-        BL_FORT_PROC_CALL(TIME_CENTER_SOURCES, time_center_sources)
+        time_center_sources
             (bx.loVect(), bx.hiVect(), BL_TO_FORTRAN(S_new[mfi]),
              BL_TO_FORTRAN(ext_src_old[mfi]), BL_TO_FORTRAN(ext_src_new[mfi]),
              &a_old, &a_new, &dt, &print_fortran_warnings);
@@ -133,7 +158,7 @@ Nyx::time_center_source_terms (MultiFab& S_new,
         for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
-            BL_FORT_PROC_CALL(ADJUST_HEAT_COOL, adjust_heat_cool)
+            adjust_heat_cool
                 (bx.loVect(), bx.hiVect(), 
                  BL_TO_FORTRAN(S_old[mfi]), BL_TO_FORTRAN(S_new[mfi]),
                  BL_TO_FORTRAN(ext_src_old[mfi]), BL_TO_FORTRAN(ext_src_new[mfi]),

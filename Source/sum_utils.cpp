@@ -4,6 +4,8 @@
 #include <Nyx.H>
 #include <Nyx_F.H>
 
+using namespace amrex;
+
 Real
 Nyx::vol_weight_sum (const std::string& name,
                      Real               time,
@@ -11,14 +13,14 @@ Nyx::vol_weight_sum (const std::string& name,
 {
     Real        sum = 0;
     const Real* dx  = geom.CellSize();
-    MultiFab*   mf  = derive(name, time, 0);
+    auto        mf  = derive(name, time, 0);
 
     BL_ASSERT(mf != 0);
 
     if (masked)
     {
         int flev = parent->finestLevel();
-        while (!parent->getAmrLevels().defined(flev))
+        while (parent->getAmrLevels()[flev] == nullptr)
             flev--;
 
         if (level < flev)
@@ -41,12 +43,10 @@ Nyx::vol_weight_sum (const std::string& name,
         const int* lo  = box.loVect();
         const int* hi  = box.hiVect();
 
-        BL_FORT_PROC_CALL(SUM_OVER_LEVEL, sum_over_level)
+         sum_over_level
             (BL_TO_FORTRAN(fab), lo, hi, dx, &s);
         sum += s;
     }
-
-    delete mf;
 
     ParallelDescriptor::ReduceRealSum(sum);
 
@@ -67,7 +67,7 @@ Nyx::vol_weight_sum (MultiFab& mf, bool masked)
     if (masked)
     {
         int flev = parent->finestLevel();
-        while (!parent->getAmrLevels().defined(flev)) flev--;
+        while (parent->getAmrLevels()[flev] == nullptr) flev--;
 
         if (level < flev)
         {
@@ -90,13 +90,13 @@ Nyx::vol_weight_sum (MultiFab& mf, bool masked)
 
         if ( !masked || (mask == 0) )
         {
-            BL_FORT_PROC_CALL(SUM_OVER_LEVEL, sum_over_level)
+            sum_over_level
                 (BL_TO_FORTRAN(fab), lo, hi, dx, &s);
         }
         else
         {
             FArrayBox& fab2 = (*mask)[mfi];
-            BL_FORT_PROC_CALL(SUM_PRODUCT, sum_product)
+            sum_product
                 (BL_TO_FORTRAN(fab), BL_TO_FORTRAN(fab2), lo, hi, dx, &s);
         }
 
@@ -117,7 +117,7 @@ Nyx::vol_weight_squared_sum_level (const std::string& name,
 {
     Real        sum = 0;
     const Real* dx  = geom.CellSize();
-    MultiFab*   mf  = derive(name, time, 0);
+    auto        mf  = derive(name, time, 0);
 
     BL_ASSERT(mf != 0);
 
@@ -135,12 +135,10 @@ Nyx::vol_weight_squared_sum_level (const std::string& name,
         const int* lo  = box.loVect();
         const int* hi  = box.hiVect();
 
-        BL_FORT_PROC_CALL(SUM_PRODUCT, sum_product)
+        sum_product
             (BL_TO_FORTRAN(fab), BL_TO_FORTRAN(fab), lo, hi, dx, &s);
         sum += s;
     }
-
-    delete mf;
 
     ParallelDescriptor::ReduceRealSum(sum);
 
@@ -155,12 +153,12 @@ Nyx::vol_weight_squared_sum (const std::string& name,
 {
     Real        sum = 0;
     const Real* dx  = geom.CellSize();
-    MultiFab*   mf  = derive(name, time, 0);
+    auto        mf  = derive(name, time, 0);
 
     BL_ASSERT(mf != 0);
 
     int flev = parent->finestLevel();
-    while (!parent->getAmrLevels().defined(flev)) flev--;
+    while (parent->getAmrLevels()[flev] == nullptr) flev--;
 
     MultiFab* mask = 0;
     if (level < flev)
@@ -183,22 +181,20 @@ Nyx::vol_weight_squared_sum (const std::string& name,
 
         if (mask == 0)
         {
-            BL_FORT_PROC_CALL(SUM_PRODUCT, sum_product)
+            sum_product
                 (BL_TO_FORTRAN(fab), BL_TO_FORTRAN(fab), 
                  lo, hi, dx, &s);
         }
         else
         {
             FArrayBox& fab2 = (*mask)[mfi];
-            BL_FORT_PROC_CALL(SUM_PROD_PROD, sum_prod_prod)
+            sum_prod_prod
                 (BL_TO_FORTRAN(fab), BL_TO_FORTRAN(fab), BL_TO_FORTRAN(fab2), 
                  lo, hi, dx, &s);
         }
 
         sum += s;
     }
-
-    delete mf;
 
     ParallelDescriptor::ReduceRealSum(sum);
 
@@ -216,7 +212,7 @@ Nyx::build_fine_mask()
     baf.coarsen(crse_ratio);
 
     const BoxArray& bac = parent->boxArray(level-1);
-    fine_mask = new MultiFab(bac,1,0);
+    fine_mask = new MultiFab(bac,parent->DistributionMap(level-1), 1,0);
     fine_mask->setVal(1.0);
 
 #ifdef _OPENMP

@@ -1,12 +1,14 @@
 #ifdef  GRAVITY
-#include <winstd.H>
 
 #include "Nyx.H"
 #include "Nyx_F.H"
 #include "Gravity.H"
-#include <Particles_F.H>
+#include <AMReX_Particles_F.H>
 
-BL_FORT_PROC_DECL(GET_GRAV_CONST, get_grav_const)(Real* Gconst);
+using namespace amrex;
+
+extern "C"
+{void fort_get_grav_const(Real* Gconst);}
 
 using std::string;
 
@@ -35,14 +37,14 @@ Nyx::moveKickDriftExact (Real dt)
     if (part_locs.size() != 2*BL_SPACEDIM)  
     {
         std::cout << "part_locs.size() is " << part_locs.size() << std::endl;
-        BoxLib::Abort("moveKickDriftExact: we only call the exact solver for two particles");
+        amrex::Abort("moveKickDriftExact: we only call the exact solver for two particles");
     }
 
     // Sanity check
     if (part_vels.size() != 2*BL_SPACEDIM)  
     {
         std::cout << "part_vels.size() is " << part_vels.size() << std::endl;
-        BoxLib::Abort("moveKickDriftExact: we only call the exact solver for two particles");
+        amrex::Abort("moveKickDriftExact: we only call the exact solver for two particles");
     }
 
     // These define the vector from the first to the second particle
@@ -55,7 +57,7 @@ Nyx::moveKickDriftExact (Real dt)
 
     // Gravitation acceleration = G m / r^2
     Real Gconst;
-    BL_FORT_PROC_CALL(GET_GRAV_CONST, get_grav_const)(&Gconst);
+    fort_get_grav_const(&Gconst);
 
     // First particle 
     part_vels[0] += 0.5 * dt * Gconst * part_mass[1] * (x/std::pow(r,3));
@@ -106,19 +108,19 @@ Nyx::moveKickExact (Real dt)
     if (part_locs.size() != 2*BL_SPACEDIM)  
     {
         std::cout << "part_locs.size() is " << part_locs.size() << std::endl;
-        BoxLib::Abort("moveKickExact: we only call the exact solver for two particles");
+        amrex::Abort("moveKickExact: we only call the exact solver for two particles");
     }
 
     // Sanity check
     if (part_vels.size() != 2*BL_SPACEDIM)  
     {
         std::cout << "part_vels.size() is " << part_vels.size() << std::endl;
-        BoxLib::Abort("moveKickExact: we only call the exact solver for two particles");
+        amrex::Abort("moveKickExact: we only call the exact solver for two particles");
     }
 
     // Gravitation acceleration = G m / r^2 (mass included below)
     Real Gconst;
-    BL_FORT_PROC_CALL(GET_GRAV_CONST, get_grav_const)(&Gconst);
+    fort_get_grav_const(&Gconst);
 
     // These define the vector from the first to the second particle
     Real x = (part_locs[3]-part_locs[0]);

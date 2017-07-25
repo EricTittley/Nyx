@@ -1,14 +1,17 @@
 #include <iomanip>
-#include <Nyx.H>
 
 #ifdef GRAVITY
 #include <Gravity.H>
-BL_FORT_PROC_DECL(GET_GRAV_CONST, get_grav_const)(Real* Gconst);
+extern "C"
+{ void fort_get_grav_const(amrex::Real* Gconst); }
 #endif
 
-#include <Nyx_F.H>
 #include <Nyx.H>
-#include <Particles_F.H>
+#include <Nyx_F.H>
+#include <NyxParticleContainer.H>
+#include <AMReX_Particles_F.H>
+
+using namespace amrex;
 
 #ifdef GRAVITY
 void Nyx::icReadAndPrepareFab(std::string mfDirName, int nghost, MultiFab &mf)
@@ -16,7 +19,7 @@ void Nyx::icReadAndPrepareFab(std::string mfDirName, int nghost, MultiFab &mf)
     if (level > 0 && nghost > 0)
     {
        std::cout << "Are sure you want to do what you are doing?" << std::endl;
-       BoxLib::Abort();
+       amrex::Abort();
     }
 
     //
@@ -26,7 +29,7 @@ void Nyx::icReadAndPrepareFab(std::string mfDirName, int nghost, MultiFab &mf)
 
     if (!mfDirName.empty() && mfDirName[mfDirName.length()-1] != '/')
        mfDirName += '/';
-    std::string Level = BoxLib::Concatenate("Level_", level, 1);
+    std::string Level = amrex::Concatenate("Level_", level, 1);
     mfDirName.append(Level);
     mfDirName.append("/Cell");
 
@@ -42,19 +45,20 @@ void Nyx::icReadAndPrepareFab(std::string mfDirName, int nghost, MultiFab &mf)
             if (mf_read.contains_nan(i, 1))
             {
                 std::cout << "Found NaNs in read_mf in component " << i << ". " << std::endl;
-                BoxLib::Abort("Nyx::init_particles: Your initial conditions contain NaNs!");
+                amrex::Abort("Nyx::init_particles: Your initial conditions contain NaNs!");
             }
         }
     }
 
-    BoxArray ba      = parent->boxArray(level);
-    BoxArray ba_read = mf_read.boxArray();
+    const auto& ba      = parent->boxArray(level);
+    const auto& dm      = parent->DistributionMap(level);
+    const auto& ba_read = mf_read.boxArray();
     int      nc      = mf_read.nComp();
 
     //if we don't use a cic scheme for the initial conditions, 
     //we can safely set the number of ghost cells to 0
     //for multilevel ICs we can't use ghostcells
-    mf.define(ba, nc, nghost, Fab_allocate);
+    mf.define(ba, dm, nc, nghost);
 
     mf.copy(mf_read,0,0,nc);
 
@@ -70,13 +74,12 @@ void Nyx::icReadAndPrepareFab(std::string mfDirName, int nghost, MultiFab &mf)
 	}
 	ParallelDescriptor::Barrier();
 	if (ParallelDescriptor::IOProcessor()){
-            BoxLib::Abort();
+            amrex::Abort();
 	}
     }
 
-    geom.FillPeriodicBoundary(mf, true);
-    //Of course we have to fill the ghost zones too!
     mf.FillBoundary();
+    mf.EnforcePeriodicity(geom.periodicity());
 
     //FIXME
     //mf.setVal(0);
@@ -88,7 +91,7 @@ void Nyx::icReadAndPrepareFab(std::string mfDirName, int nghost, MultiFab &mf)
             if (mf.contains_nan(i, 1, nghost))
             {
                 std::cout << "Found NaNs in component " << i << ". " << std::endl;
-                BoxLib::Abort("Nyx::init_particles: Your initial conditions contain NaNs!");
+                amrex::Abort("Nyx::init_particles: Your initial conditions contain NaNs!");
             }
         }
     }
@@ -98,7 +101,7 @@ void Nyx::icReadAndPrepareFab(std::string mfDirName, int nghost, MultiFab &mf)
 void Nyx::initcosmo()
 {
 
-//     if(parent->useFixedUpToLevel<level)
+//     if(parent->useFixedUpToLevel()<level)
 //       return;
     if (ParallelDescriptor::IOProcessor())
        std::cout << "Calling InitCosmo for level " << level << std::endl;
@@ -113,7 +116,7 @@ void Nyx::initcosmo()
     Real redshift=-1;
     Array<int> n_part(BL_SPACEDIM);
 
-    if (level > Amr::useFixedUpToLevel)
+    if (level > parent->useFixedUpToLevel())
     {
         std::cout << "You have more refinement than grids, there might be a problem with your refinement criterion..." << std::endl;
 
@@ -140,12 +143,12 @@ void Nyx::initcosmo()
     
 #ifdef NUFLUID
     Real comoving_OmNu;
-    BL_FORT_PROC_CALL(GET_OMNU,get_omnu)(&comoving_OmNu);
+    fort_get_omnu(&comoving_OmNu);
 #endif
-    BL_FORT_PROC_CALL(GET_OMM, get_omm )(&comoving_OmM );
-    BL_FORT_PROC_CALL(GET_OMB, get_omb )(&comoving_OmB );
-    BL_FORT_PROC_CALL(GET_HUBBLE, get_hubble)(&comoving_h);
-    BL_FORT_PROC_CALL(GET_GRAV_CONST, get_grav_const)(&Gconst);
+    fort_get_omm(&comoving_OmM );
+    fort_get_omb(&comoving_OmB );
+    fort_get_hubble(&comoving_h);
+    fort_get_grav_const(&Gconst);
 
     // We now define this here instead of reading it.
     comoving_OmL = 1. - comoving_OmM;
@@ -162,7 +165,7 @@ void Nyx::initcosmo()
         	    std::cout << "You assume a non-flat universe - \\Omega_K = "
         		      << comoving_OmK << std::endl;
             }
-            BoxLib::Abort();
+            amrex::Abort();
     }
 
     //compute \rho_{baryon}=3H_0^2\Omega_{baryon}/(8\pi G)
@@ -306,7 +309,7 @@ void Nyx::initcosmo()
     {
        std::cout << "No clue from which code the initial conditions originate..." << std::endl
 	         << "Aborting...!" << std::endl;
-       BoxLib::Abort();
+       amrex::Abort();
     }
 
     
@@ -332,7 +335,7 @@ void Nyx::initcosmo()
 		                  particleMass, 
 				  part_dx, part_vx,
 				  myBaWhereNot,
-				  level);
+	                          level, parent->initialBaLevels()+1);
 //    Nyx::theDMPC()->InitCosmo(mf, vel_fac, n_part, particleMass);
     //Nyx::theDMPC()->InitCosmo(mf, vel_fac, n_part, particleMass, part_dx, part_vx);
 
@@ -385,10 +388,10 @@ void Nyx::initcosmo()
      	S_new.mult(rhoB,  Density, 1, S_new.nGrow());
 
 //      //This block assigns "the same" density for the baryons as for the dm.
-//      PArray<MultiFab> particle_mf;
+//      Array<std::unique_ptr<MultiFab> > particle_mf;
 //      Nyx::theDMPC()->AssignDensity(particle_mf);
-//      particle_mf[0].mult(realOmB / comoving_OmD);
-//      S_new.copy(particle_mf[0], 0, Density, 1);
+//      particle_mf[0]->mult(realOmB / comoving_OmD);
+//      S_new.copy(*particle_mf[0], 0, Density, 1);
 
      	//copy velocities...
      	S_new.copy(mf, baryon_vx, Xmom, 3);
@@ -427,7 +430,7 @@ void Nyx::initcosmo()
      	    const int* lo = box.loVect();
      	    const int* hi = box.hiVect();
 
-     	    BL_FORT_PROC_CALL(INIT_E_FROM_T, init_e_from_t)
+     	    fort_init_e_from_t
       	       (BL_TO_FORTRAN(S_new[mfi]), &ns, 
       	        BL_TO_FORTRAN(D_new[mfi]), &nd, lo, hi, &old_a);
      	}     	

@@ -373,6 +373,9 @@ Nyx::init_particles ()
 
         if (particle_init_type == "Random")
         {
+#ifdef DISABLE_INIT_RANDOM
+            amrex::Abort("Nyx::init_particles(): Random Disabled (ERT)");
+#endif
             if (particle_initrandom_count <= 0)
             {
                 amrex::Abort("Nyx::init_particles(): particle_initrandom_count must be > 0");
@@ -390,13 +393,18 @@ Nyx::init_particles ()
                           << particle_initrandom_iseed << "\n\n";
             }
 
+#ifndef DISABLE_INIT_RANDOM
             DMPC->InitRandom(particle_initrandom_count,
                              particle_initrandom_iseed,
                              particle_initrandom_mass,
                              particle_initrandom_serialize);
+#endif
         }
         else if (particle_init_type == "RandomPerBox")
         {
+#ifdef DISABLE_INIT_RANDOM
+            amrex::Abort("Nyx::init_particles(): RaondomPerBox disabled (ERT)");
+#endif
             if (particle_initrandom_count_per_box <= 0)
             {
                 amrex::Abort("Nyx::init_particles(): particle_initrandom_count_per_box must be > 0");
@@ -416,11 +424,12 @@ Nyx::init_particles ()
             // We just make this MultiFab in order to iterate over it ...
             MultiFab particle_mf(grids,dmap,1,1);
 
+#ifndef DISABLE_INIT_RANDOM
             DMPC->InitRandomPerBox(particle_initrandom_count_per_box,
                                    particle_initrandom_iseed,
                                    particle_initrandom_mass,
                                    particle_mf);
-
+#endif
         }
         else if (particle_init_type == "AsciiFile")
         {

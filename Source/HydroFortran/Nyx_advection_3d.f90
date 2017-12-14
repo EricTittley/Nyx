@@ -1028,8 +1028,8 @@
 !               ! Pressure = (gamma - 1) * rho * e
 !               q(i,j,k,QPRES) = gamma_minus_1 * q(i,j,k,QREINT)
 ! Perfect Fluid
-!	       ! Pressure = SoundSpeed^2 * rho [km/s]^2 Mo/Mpc^3
-	       q(i,j,k,QPRES) = SoundSpeedSquared * q(i,j,k,QRHO)
+!              ! Pressure = SoundSpeed^2 * rho [km/s]^2 Mo/Mpc^3
+               q(i,j,k,QPRES) = SoundSpeedSquared * q(i,j,k,QRHO)
 
             end do
          end do
@@ -1065,8 +1065,8 @@
                ! PREVIOUS LINE WAS:  a_dot * THREE * gamma_minus_1 * q(i,j,k,QREINT)
 
                ! WAS:
-	       ! dpde = gamma_minus_1 * q(i,j,k,QRHO)
-	       ! dpdr = gamma_minus_1 * q(i,j,k,QREINT)/q(i,j,k,QRHO)
+               ! dpde = gamma_minus_1 * q(i,j,k,QRHO)
+               ! dpdr = gamma_minus_1 * q(i,j,k,QREINT)/q(i,j,k,QRHO)
                dpde = 0.0
                dpdr = SoundSpeedSquared
                srcQ(i,j,k,QPRES ) = dpde * srcQ(i,j,k,QREINT) * rhoInv &
@@ -1218,7 +1218,7 @@
       integer  :: l, m
 
       call bl_allocate( sigma,lo(1),hi(1),lo(2),hi(2),lo(3),hi(3),1,3,1,3 )
-		
+                
       a_half  = HALF * (a_old + a_new)
       a_oldsq = a_old * a_old
       a_newsq = a_new * a_new
@@ -1231,14 +1231,18 @@
       area2   = dx      * dz
       area3   = dx * dy
 
-      !Eta is shear viscosity and Zeta is bulk viscosity
-      eta      = 0.0
-      zeta  = 1d-5
+      ! eta is shear viscosity and zeta is bulk viscosity
+      ! The units are not yet understood, but reasonable values are (+- order of magnitude)
+      !  eta  = 1e-7
+      !  zeta = 1e5
+
+      eta   = 1.0d-7
+      zeta  = 0.0
 
       sigma = 0.0
       call viscosity_tensor(lo,hi,sigma,eta,zeta,uin,dx,dy,dz,&
                             uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3,div)
-	
+        
       do n = 1, NVAR
 
             do k = lo(3),hi(3)
@@ -1272,7 +1276,7 @@
                enddo
             enddo
 
-			
+                        
             !Viscosity update
             do k = lo(3),hi(3)
                do j = lo(2),hi(2)
@@ -1580,7 +1584,7 @@
                endif
                pl(i)  = max(pl(i),small_pres)
                ! Not sure what to do here. With a perfect fluid, the pressure is not a function of internal 
-	       ! energy. But is the converse true?  The internal energy should just be constant.
+               ! energy. But is the converse true?  The internal energy should just be constant.
                rel(i) = pl(i) / gamma_minus_1
             end if
          end do
@@ -1636,7 +1640,7 @@
                endif
                pr(i) = max(pr(i),small_pres)
                ! Not sure what to do here. With a perfect fluid, the pressure is not a function of internal 
-	       ! energy. But is the converse true?  The internal energy should just be constant.
+               ! energy. But is the converse true?  The internal energy should just be constant.
                rer(i) = pr(i) / gamma_minus_1
             end if
          end do
@@ -1812,7 +1816,7 @@
 
          ! NOTE: Here we assume constant gamma.
          ! Not sure what to do here. With a perfect fluid, the pressure is not a function of internal 
-	 ! energy. But is the converse true?  The internal energy should just be constant.
+         ! energy. But is the converse true?  The internal energy should just be constant.
          regdnv        = pgdnv(ilo:ihi,j,kc) / gamma_minus_1
 
          do i = ilo, ihi
@@ -2011,7 +2015,7 @@
 
               !!This may be useless 
               !!divq = div(lo,hi,q_in,q_l1,q_l2,q_l3,q_h1,q_h2,q_h3,dx,dy,dz,&
-              !!		 div,div_l1,div_l2,div_l3,div_h1,div_h2,div_h3)
+              !!                 div,div_l1,div_l2,div_l3,div_h1,div_h2,div_h3)
 
               !!Divergence terms are already computed, so i am using it
 
@@ -2031,9 +2035,10 @@
               sigma(i,j,k,1,3) = sigma(i,j,k,3,1)
               sigma(i,j,k,2,3) = sigma(i,j,k,3,2)
         
-              !if (sigma(i,j,k,2,2) .ne. 0 .or. check .ne. 10) then
-              !       Write(*,*) sigma(i,j,k,:,:)     
-              !       check = check +1
+              !if (sigma(i,j,k,2,2) .ne. 0 .or. check .ne. 2) then
+              !  write(*,*) 'Sigma='
+              !  write(*,*) sigma(i,j,k,:,:)    
+              !  check = check +1
               !endif
             enddo
           enddo
@@ -2047,9 +2052,9 @@
         !sigma(i,j,k,2,2) = 2!div1 *(zeta + FOUR3RD *eta)
         !sigma(i,j,k,3,3) = 2!
         !Write(*,*) sigma(i,j,k,1,1), &
-        !	    sigma(i,j,k,2,2), &
-        !	    sigma(i,j,k,3,3), &
-        !	    div1
+        !           sigma(i,j,k,2,2), &
+        !           sigma(i,j,k,3,3), &
+        !           div1
           
         call bl_deallocate(duxdx)                       
         call bl_deallocate(duydx)                       
